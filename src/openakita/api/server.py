@@ -20,7 +20,9 @@ import time
 from typing import Any
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from .routes import (
     agents,
@@ -87,6 +89,20 @@ def create_app(
         description="OpenAkita HTTP API for Chat, Health, Skills",
         version=get_version_string(),
     )
+
+    @app.exception_handler(RequestValidationError)
+    async def _validation_error_handler(request, exc: RequestValidationError):
+        """Return Pydantic validation errors as a flat string detail
+        so the frontend never receives raw error objects."""
+        msgs = []
+        for err in exc.errors():
+            loc = " → ".join(str(l) for l in err.get("loc", []))
+            msg = err.get("msg", "validation error")
+            msgs.append(f"{loc}: {msg}" if loc else msg)
+        return JSONResponse(
+            status_code=422,
+            content={"detail": "; ".join(msgs) if msgs else "Validation error"},
+        )
 
     # CORS: 允许 Setup Center (localhost) 访问
     app.add_middleware(
