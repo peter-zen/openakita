@@ -16,6 +16,7 @@ MCP 系统遵循 Model Context Protocol 规范 (modelcontextprotocol.io)
 import asyncio
 import base64
 import contextlib
+import contextvars
 import json
 import logging
 import os
@@ -227,9 +228,20 @@ class Agent:
     # These are backed by per-instance dicts keyed by asyncio.current_task() id,
     # so concurrent chat_with_session calls on the same Agent instance don't
     # overwrite each other's session context.
+    #
+    # A ContextVar propagates the parent task's key to child tasks created via
+    # asyncio.create_task() (e.g. tool execution in reason_stream's
+    # cancel/skip racing).  Without this, child tasks get a new task id and
+    # cannot find the session stored by the parent.
+    _inherited_task_key: contextvars.ContextVar[int] = contextvars.ContextVar(
+        "_inherited_task_key", default=0,
+    )
 
     @staticmethod
     def _task_key() -> int:
+        inherited = Agent._inherited_task_key.get(0)
+        if inherited:
+            return inherited
         task = asyncio.current_task()
         return id(task) if task else 0
 
@@ -245,6 +257,7 @@ class Agent:
             tls.pop(key, None)
         else:
             tls[key] = value
+            Agent._inherited_task_key.set(key)
 
     @property
     def _current_session_id(self):
