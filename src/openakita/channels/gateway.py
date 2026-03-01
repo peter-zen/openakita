@@ -940,12 +940,15 @@ class MessageGateway:
                 ensure_presets_on_mode_enable(settings.data_dir / "agents")
             except Exception as e:
                 logger.warning(f"[Gateway] Failed to deploy presets: {e}")
-            # Initialize orchestrator
+            # Initialize orchestrator — rollback on failure
             try:
                 from openakita.main import _init_orchestrator
                 await _init_orchestrator()
             except Exception as e:
-                logger.warning(f"[Gateway] Failed to init orchestrator: {e}")
+                logger.error(f"[Gateway] Failed to init orchestrator, rolling back: {e}")
+                settings.multi_agent_enabled = False
+                runtime_state.save()
+                return f"❌ 多Agent模式开启失败（Orchestrator 初始化出错: {e}）\n已回滚到单Agent模式。"
             return "✅ 已切换到 **多Agent模式 (Beta)**\n新消息将通过多Agent系统处理。"
 
         if arg in OFF_ARGS:
@@ -1001,6 +1004,8 @@ class MessageGateway:
         )
         if not session:
             return "❌ 无法获取会话"
+
+        self._apply_bot_agent_profile(session, message.channel)
 
         t = user_text.strip().lower()
 
@@ -1125,24 +1130,92 @@ class MessageGateway:
         return f"🤖 **当前 Agent**\n\nID: `{current_id}`"
 
     def _handle_agent_reset(self, session: Session) -> str:
-        """处理 /重置：重置为 default"""
+        """处理 /重置：重置为该 bot 绑定的默认 agent（或 "default"）"""
         from datetime import datetime
+
+        reset_target = session.get_metadata("_bot_default_agent") or "default"
 
         ctx = session.context
         old_id = ctx.agent_profile_id
-        if old_id == "default":
-            return "ℹ️ 当前已是默认 Agent"
+        if old_id == reset_target:
+            label = "默认 Agent" if reset_target == "default" else f"**{reset_target}**"
+            return f"ℹ️ 当前已是{label}"
 
         ctx.agent_switch_history.append({
             "from": old_id,
-            "to": "default",
+            "to": reset_target,
             "at": datetime.now().isoformat(),
         })
-        ctx.agent_profile_id = "default"
+        ctx.agent_profile_id = reset_target
         self.session_manager.mark_dirty()
-        logger.info(f"[IM] Agent reset to default for {session.session_key}")
+        logger.info(f"[IM] Agent reset to {reset_target} for {session.session_key}")
 
-        return "✅ 已重置为默认 Agent"
+        if reset_target == "default":
+            return "✅ 已重置为默认 Agent"
+        return f"✅ 已重置为 **{reset_target}**"
+
+    def _get_bot_default_agent(self, channel: str) -> str:
+        """Return the agent_profile_id configured on the adapter for *channel*."""
+        adapter = self._adapters.get(channel)
+        if adapter and hasattr(adapter, "agent_profile_id"):
+            return adapter.agent_profile_id
+        return "default"
+
+    def _apply_bot_agent_profile(self, session: Session, channel: str) -> None:
+        """For multi-bot setups, apply the adapter's bound agent_profile_id
+        to a newly-created session so the orchestrator routes to the correct agent.
+        Only runs once per session (guard: ``_bot_default_agent`` metadata).
+        """
+        if session.get_metadata("_bot_default_agent") is not None:
+            return
+        bot_agent = self._get_bot_default_agent(channel)
+        session.set_metadata("_bot_default_agent", bot_agent)
+        if bot_agent != "default" and not session.context.agent_switch_history:
+            session.context.agent_profile_id = bot_agent
+            self.session_manager.mark_dirty()
+            logger.info(
+                f"[IM] Applied bot default agent: {bot_agent} "
+                f"for {session.session_key}"
+            )
+
+    # ==================== 自然语言意图检测 ====================
+
+    import re as _re
+
+    _NL_MODE_ON = _re.compile(
+        r"^(?:帮我|请)?(?:开启|打开|启用|启动|开|打开一下)[\s]*"
+        r"(?:多\s*[Aa]gent|多智能体|multi[\s\-]?agent)[\s]*(?:模式)?$",
+    )
+    _NL_MODE_OFF = _re.compile(
+        r"^(?:帮我|请)?(?:关闭|关掉|停用|停止|关)[\s]*"
+        r"(?:多\s*[Aa]gent|多智能体|multi[\s\-]?agent)[\s]*(?:模式)?$",
+    )
+    _NL_SWITCH = _re.compile(
+        r"^(?:帮我|请)?(?:切换到|换成|使用|用|切换为|改为|改成)[\s]*(.+?)[\s]*(?:agent|助手|机器人)?$",
+        _re.IGNORECASE,
+    )
+
+    def _detect_agent_natural_language(self, text: str) -> tuple[str, str] | None:
+        """Detect natural-language intent for multi-agent operations.
+
+        Returns (action, arg) or None:
+        - ("mode_on", "")
+        - ("mode_off", "")
+        - ("switch", "<agent_id>")
+        """
+        t = text.strip()
+        if len(t) > 60 or len(t) < 4:
+            return None
+        if self._NL_MODE_ON.search(t):
+            return ("mode_on", "")
+        if self._NL_MODE_OFF.search(t):
+            return ("mode_off", "")
+        m = self._NL_SWITCH.search(t)
+        if m:
+            target = m.group(1).strip().strip("\"'`")
+            if target:
+                return ("switch", target)
+        return None
 
     def _get_group_response_mode(self, channel: str) -> GroupResponseMode:
         """获取群聊响应模式（Per-Bot 配置 > 全局配置 > 默认值）"""
@@ -1879,6 +1952,29 @@ class MessageGateway:
                     await self._send_response(message, response_text)
                     return
 
+            # 自然语言切换多Agent模式 / 切换Agent
+            _nlu = self._detect_agent_natural_language(user_text)
+            if _nlu is not None:
+                action, arg = _nlu
+                if action == "mode_on":
+                    resp = await self._handle_mode_command("/模式 开启")
+                elif action == "mode_off":
+                    resp = await self._handle_mode_command("/模式 关闭")
+                elif action == "switch":
+                    _switch_session = self.session_manager.get_session(
+                        channel=message.channel,
+                        chat_id=message.chat_id,
+                        user_id=message.user_id,
+                    )
+                    resp = await self._handle_agent_switch(
+                        _switch_session, f"/切换 {arg}"
+                    )
+                else:
+                    resp = None
+                if resp:
+                    await self._send_response(message, resp)
+                    return
+
             # 检查是否是上下文重置命令（开启新话题）
             _CONTEXT_RESET_COMMANDS = {"/new", "/reset", "/新话题", "/新任务", "新对话"}
             _user_cmd = user_text.strip()
@@ -1923,6 +2019,9 @@ class MessageGateway:
                 chat_id=message.chat_id,
                 user_id=message.user_id,
             )
+
+            # 4.1 多Bot绑定：将 adapter 配置的 agent_profile_id 写入新 session
+            self._apply_bot_agent_profile(session, message.channel)
 
             # 4.5 推送未送达的自检报告（每天第一条消息时触发，最多一次）
             await self._maybe_deliver_pending_selfcheck_report(message)

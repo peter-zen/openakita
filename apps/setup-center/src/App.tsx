@@ -8519,7 +8519,7 @@ export function App() {
               <p style={{ color: "#94a3b8", fontSize: 15 }}>此模块已禁用，点击上方开关启用</p>
             </div>
           ) : (
-            <IMView serviceRunning={serviceStatus?.running ?? false} />
+            <IMView serviceRunning={serviceStatus?.running ?? false} multiAgentEnabled={multiAgentEnabled} apiBaseUrl={apiBaseUrl} />
           )}
         </div>
       );
