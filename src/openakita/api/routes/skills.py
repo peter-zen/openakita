@@ -207,6 +207,19 @@ async def list_skills(request: Request):
             "source_url": source_url,
         })
 
+    def _sort_key(s: dict) -> tuple:
+        enabled = s.get("enabled", False)
+        system = s.get("system", False)
+        if enabled and not system:
+            tier = 0  # 启用的外部技能
+        elif enabled and system:
+            tier = 1  # 启用的系统技能
+        else:
+            tier = 2  # 禁用的技能
+        return (tier, s.get("name", ""))
+
+    skills.sort(key=_sort_key)
+
     return {"skills": skills}
 
 
