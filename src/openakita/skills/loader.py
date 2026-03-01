@@ -75,21 +75,60 @@ SYSTEM_SKILL_DIRECTORIES = [
 # 打包时默认不启用的外部技能（新安装 / 无 data/skills.json 时生效）。
 # 用户通过前端面板手动勾选后会创建 skills.json，之后以用户选择为准。
 DEFAULT_DISABLED_SKILLS: frozenset[str] = frozenset({
-    "algorithmic-art",
-    "brand-guidelines",
-    "changelog-generator",
-    "code-reviewer",
-    "frontend-design",
-    "github-automation",
-    "gmail-automation",
-    "google-calendar-automation",
-    "image-understander",
-    "internal-comms",
-    "moltbook",
-    "slack-gif-creator",
-    "theme-factory",
-    "video-downloader",
-    "webapp-testing",
+    "openakita/skills@algorithmic-art",
+    "openakita/skills@apify-scraper",
+    "jimliu/baoyu-skills@baoyu-article-illustrator",
+    "jimliu/baoyu-skills@baoyu-comic",
+    "jimliu/baoyu-skills@baoyu-cover-image",
+    "jimliu/baoyu-skills@baoyu-format-markdown",
+    "jimliu/baoyu-skills@baoyu-image-gen",
+    "jimliu/baoyu-skills@baoyu-infographic",
+    "jimliu/baoyu-skills@baoyu-slide-deck",
+    "jimliu/baoyu-skills@baoyu-url-to-markdown",
+    "openakita/skills@bilibili-watcher",
+    "openakita/skills@brand-guidelines",
+    "openakita/skills@changelog-generator",
+    "openakita/skills@chinese-novelist",
+    "openakita/skills@chinese-writing",
+    "openakita/skills@code-reviewer",
+    "openakita/skills@douyin-tool",
+    "openakita/skills@frontend-design",
+    "openakita/skills@github-automation",
+    "openakita/skills@gmail-automation",
+    "openakita/skills@google-calendar-automation",
+    "openakita/skills@image-understander",
+    "openakita/skills@internal-comms",
+    "openakita/skills@knowledge-capture",
+    "openakita/skills@moltbook",
+    "openakita/skills@notebooklm",
+    "openakita/skills@obsidian-skills",
+    "openakita/skills@ppt-creator",
+    "openakita/skills@pretty-mermaid",
+    "openakita/skills@slack-gif-creator",
+    "openakita/skills@summarizer",
+    "obra/superpowers@brainstorming",
+    "obra/superpowers@dispatching-parallel-agents",
+    "obra/superpowers@executing-plans",
+    "obra/superpowers@finishing-a-development-branch",
+    "obra/superpowers@receiving-code-review",
+    "obra/superpowers@requesting-code-review",
+    "obra/superpowers@subagent-driven-development",
+    "obra/superpowers@systematic-debugging",
+    "obra/superpowers@test-driven-development",
+    "obra/superpowers@using-git-worktrees",
+    "obra/superpowers@using-superpowers",
+    "obra/superpowers@verification-before-completion",
+    "obra/superpowers@writing-plans",
+    "obra/superpowers@writing-skills",
+    "openakita/skills@theme-factory",
+    "openakita/skills@todoist-task",
+    "openakita/skills@translate-pdf",
+    "openakita/skills@video-downloader",
+    "openakita/skills@webapp-testing",
+    "openakita/skills@wechat-article",
+    "openakita/skills@xiaohongshu-creator",
+    "openakita/skills@youtube-summarizer",
+    "openakita/skills@yuque-skills",
 })
 
 
@@ -197,8 +236,7 @@ class SkillLoader:
                         loaded += 1
                 except Exception as e:
                     logger.error(f"Failed to load skill from {item}: {e}")
-            elif item.name == "system":
-                # 'system' 子目录：递归加载系统工具 skill
+            elif item.name in ("system", "external"):
                 loaded += self.load_from_directory(item)
 
         logger.info(f"Loaded {loaded} skills from {directory}")
@@ -297,7 +335,11 @@ class SkillLoader:
         }
         return all_external - DEFAULT_DISABLED_SKILLS
 
-    def prune_external_by_allowlist(self, external_allowlist: set[str] | None) -> int:
+    def prune_external_by_allowlist(
+        self,
+        external_allowlist: set[str] | None,
+        agent_referenced_skills: set[str] | None = None,
+    ) -> int:
         """
         根据外部技能 allowlist 裁剪已加载技能。
 
@@ -309,16 +351,16 @@ class SkillLoader:
         if external_allowlist is None:
             return 0
 
+        keep_extra = agent_referenced_skills or set()
         removed = 0
         for name, skill in list(self._loaded_skills.items()):
             try:
                 if getattr(skill.metadata, "system", False):
                     continue
             except Exception:
-                # 保守：解析异常时不裁剪
                 continue
 
-            if name not in external_allowlist:
+            if name not in external_allowlist and name not in keep_extra:
                 self._loaded_skills.pop(name, None)
                 try:
                     self.registry.unregister(name)

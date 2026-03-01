@@ -1,5 +1,5 @@
 ---
-name: google-calendar-automation
+name: openakita/skills@google-calendar-automation
 description: Automate Google Calendar events, scheduling, availability checks, and attendee management via Rube MCP (Composio). Create events, find free slots, manage attendees, and list calendars programmatically.
 requires:
   mcp: [rube]

@@ -1,5 +1,5 @@
 ---
-name: datetime-tool
+name: openakita/skills@datetime-tool
 description: |
   获取当前时间、格式化日期、计算日期差值、时区转换。
   当用户询问时间、日期、时区相关问题时使用此技能。

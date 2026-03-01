@@ -1,5 +1,5 @@
 ---
-name: file-manager
+name: openakita/skills@file-manager
 description: |
   文件和目录管理工具。创建、读取、写入、删除、移动、复制文件。
   搜索文件、列出目录、获取文件信息。

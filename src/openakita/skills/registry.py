@@ -6,6 +6,7 @@
 """
 
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Optional
 
@@ -108,9 +109,10 @@ class SkillEntry:
                 "input_schema": self._get_input_schema(),
             }
         else:
-            # 外部技能：使用 skill_ 前缀
+            # 外部技能：使用 skill_ 前缀，清理命名空间中的非法字符
+            safe = re.sub(r"[^a-zA-Z0-9_]", "_", self.name)
             return {
-                "name": f"skill_{self.name.replace('-', '_')}",
+                "name": f"skill_{safe}",
                 "description": f"[Skill] {self.description}",
                 "input_schema": {
                     "type": "object",

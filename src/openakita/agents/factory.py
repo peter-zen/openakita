@@ -59,6 +59,31 @@ class AgentFactory:
         return name.lower().replace("_", "-")
 
     @staticmethod
+    def _build_skill_match_set(names: list[str]) -> tuple[set[str], set[str]]:
+        """构建技能名匹配集，同时支持完整命名空间和短名匹配。
+
+        Returns:
+            (exact_set, short_set) — exact_set 包含完整归一化名称，
+            short_set 包含 ``@`` 后的短名（用于跨格式回退匹配）。
+        """
+        n = AgentFactory._normalize_skill_name
+        exact: set[str] = set()
+        short: set[str] = set()
+        for s in names:
+            norm = n(s)
+            exact.add(norm)
+            short.add(norm.split("@", 1)[-1] if "@" in norm else norm)
+        return exact, short
+
+    @staticmethod
+    def _skill_in_set(skill_name: str, exact_set: set[str], short_set: set[str]) -> bool:
+        """判断技能名是否在匹配集中（兼容命名空间和短名）。"""
+        norm = AgentFactory._normalize_skill_name(skill_name)
+        if norm in exact_set:
+            return True
+        return (norm.split("@", 1)[-1] if "@" in norm else norm) in short_set
+
+    @staticmethod
     def _apply_skill_filter(agent: Agent, profile: AgentProfile) -> None:
         if profile.skills_mode == SkillsMode.ALL or not profile.skills:
             return
@@ -68,15 +93,15 @@ class AgentFactory:
 
         removed = 0
         if profile.skills_mode == SkillsMode.INCLUSIVE:
-            keep = {AgentFactory._normalize_skill_name(s) for s in profile.skills}
+            exact, short = AgentFactory._build_skill_match_set(profile.skills)
             for skill_name in all_skills:
-                if AgentFactory._normalize_skill_name(skill_name) not in keep:
+                if not AgentFactory._skill_in_set(skill_name, exact, short):
                     registry.unregister(skill_name)
                     removed += 1
         elif profile.skills_mode == SkillsMode.EXCLUSIVE:
-            exclude = {AgentFactory._normalize_skill_name(s) for s in profile.skills}
+            exact, short = AgentFactory._build_skill_match_set(profile.skills)
             for skill_name in all_skills:
-                if AgentFactory._normalize_skill_name(skill_name) in exclude:
+                if AgentFactory._skill_in_set(skill_name, exact, short):
                     registry.unregister(skill_name)
                     removed += 1
 

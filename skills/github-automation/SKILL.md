@@ -1,5 +1,5 @@
 ---
-name: github-automation
+name: openakita/skills@github-automation
 description: Automate GitHub repositories, issues, pull requests, branches, CI/CD, and permissions via Rube MCP (Composio). Manage code workflows, review PRs, search code, and handle deployments programmatically.
 requires:
   mcp: [rube]

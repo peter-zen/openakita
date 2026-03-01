@@ -532,7 +532,10 @@ class AgentToolHandler:
 
             score = 0.0
             if skills and p.skills:
-                overlap = len(set(skills) & set(p.skills))
+                from ...agents.factory import AgentFactory
+                exact_a, short_a = AgentFactory._build_skill_match_set(skills)
+                exact_b, short_b = AgentFactory._build_skill_match_set(p.skills)
+                overlap = len(short_a & short_b)
                 total = max(len(skills), len(p.skills))
                 score += (overlap / total) * 0.7
 

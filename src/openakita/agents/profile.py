@@ -35,7 +35,7 @@ class SkillsMode(str, Enum):
 
 # SYSTEM Profile 中不可被用户修改的核心字段
 _SYSTEM_IMMUTABLE_FIELDS = frozenset({
-    "id", "type", "created_by", "skills", "skills_mode",
+    "id", "type", "created_by", "skills", "skills_mode", "category",
 })
 
 
@@ -67,6 +67,10 @@ class AgentProfile:
     # 国际化：{"zh": "小秋", "en": "Akita"}
     name_i18n: dict[str, str] = field(default_factory=dict)
     description_i18n: dict[str, str] = field(default_factory=dict)
+
+    # 分类与可见性
+    category: str = ""
+    hidden: bool = False
 
     # 临时 Agent 支持
     ephemeral: bool = False
@@ -143,11 +147,17 @@ class ProfileStore:
         with self._lock:
             return self._ephemeral.get(profile_id) or self._cache.get(profile_id)
 
-    def list_all(self, include_ephemeral: bool = False) -> list[AgentProfile]:
+    def list_all(
+        self,
+        include_ephemeral: bool = False,
+        include_hidden: bool = True,
+    ) -> list[AgentProfile]:
         with self._lock:
             result = list(self._cache.values())
             if include_ephemeral:
                 result.extend(self._ephemeral.values())
+            if not include_hidden:
+                result = [p for p in result if not p.hidden]
             return result
 
     def save(self, profile: AgentProfile) -> None:

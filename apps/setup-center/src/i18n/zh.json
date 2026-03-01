@@ -906,7 +906,21 @@
     "deleteFailed": "删除失败",
     "skillsModeAll": "全部技能",
     "skillsModeInclusive": "仅使用勾选的技能",
-    "skillsModeExclusive": "排除勾选的技能"
+    "skillsModeExclusive": "排除勾选的技能",
+    "category": "分类",
+    "categoryAll": "全部",
+    "categoryGeneral": "通用基础",
+    "categoryContent": "内容创作",
+    "categoryEnterprise": "企业办公",
+    "categoryEducation": "教育辅助",
+    "categoryProductivity": "生活效率",
+    "categoryDevops": "开发运维",
+    "hide": "隐藏",
+    "restore": "恢复",
+    "hiddenSection": "已隐藏的 Agent",
+    "hideSuccess": "已隐藏",
+    "restoreSuccess": "已恢复",
+    "noHidden": "没有已隐藏的 Agent"
   },
   "dashboard": {
     "title": "Agent 仪表盘",

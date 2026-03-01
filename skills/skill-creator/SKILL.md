@@ -1,5 +1,5 @@
 ---
-name: skill-creator
+name: openakita/skills@skill-creator
 description: 创建和改进 OpenAkita 技能。当需要：(1) 为重复性任务创建新技能，(2) 改进现有技能，(3) 将临时脚本封装为可复用技能时使用。技能是 OpenAkita 自进化的核心机制。
 ---
 

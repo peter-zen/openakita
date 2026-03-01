@@ -1,5 +1,5 @@
 ---
-name: mcp-installer
+name: openakita/skills@mcp-installer
 description: 安装、配置和添加 MCP 服务器到 OpenAkita 系统。当用户需要：(1) 安装现有 MCP 包（npm/pip），(2) 添加远程 MCP 服务（HTTP/SSE），(3) 配置自定义本地 MCP 服务器，(4) 管理 MCP 服务器配置时使用。
 ---
 

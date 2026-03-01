@@ -906,7 +906,21 @@
     "deleteFailed": "Delete failed",
     "skillsModeAll": "All Skills",
     "skillsModeInclusive": "Only selected skills",
-    "skillsModeExclusive": "Exclude selected skills"
+    "skillsModeExclusive": "Exclude selected skills",
+    "category": "Category",
+    "categoryAll": "All",
+    "categoryGeneral": "General",
+    "categoryContent": "Content",
+    "categoryEnterprise": "Enterprise",
+    "categoryEducation": "Education",
+    "categoryProductivity": "Productivity",
+    "categoryDevops": "DevOps",
+    "hide": "Hide",
+    "restore": "Restore",
+    "hiddenSection": "Hidden Agents",
+    "hideSuccess": "Hidden",
+    "restoreSuccess": "Restored",
+    "noHidden": "No hidden agents"
   },
   "dashboard": {
     "title": "Agent Dashboard",

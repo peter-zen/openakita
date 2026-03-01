@@ -174,6 +174,18 @@ risks_or_ambiguities:
 ```"""
 
 
+def _collect_preset_referenced_skills() -> set[str]:
+    """Collect all skill names referenced by system preset agents."""
+    try:
+        from openakita.agents.presets import SYSTEM_PRESETS
+        skills: set[str] = set()
+        for preset in SYSTEM_PRESETS:
+            skills.update(preset.skills)
+        return skills
+    except Exception:
+        return set()
+
+
 class Agent:
     """
     OpenAkita 主类
@@ -1077,7 +1089,10 @@ class Agent:
                 if isinstance(al, list):
                     external_allowlist = {str(x).strip() for x in al if str(x).strip()}
             effective = self.skill_loader.compute_effective_allowlist(external_allowlist)
-            removed = self.skill_loader.prune_external_by_allowlist(effective)
+            agent_skills = _collect_preset_referenced_skills()
+            removed = self.skill_loader.prune_external_by_allowlist(
+                effective, agent_referenced_skills=agent_skills,
+            )
             if removed:
                 logger.info(f"External skills filtered: {removed} disabled")
         except Exception as e:

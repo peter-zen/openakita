@@ -12,6 +12,8 @@ type AgentProfile = {
   skills: string[];
   skills_mode: string;
   custom_prompt: string;
+  category?: string;
+  hidden?: boolean;
 };
 
 type SkillItem = {
@@ -30,6 +32,20 @@ const EMPTY_PROFILE: AgentProfile = {
   skills: [],
   skills_mode: "all",
   custom_prompt: "",
+  category: "",
+  hidden: false,
+};
+
+const CATEGORIES = ["", "general", "content", "enterprise", "education", "productivity", "devops"] as const;
+type Category = typeof CATEGORIES[number];
+
+const CATEGORY_COLORS: Record<string, string> = {
+  general: "#4A90D9",
+  content: "#FF6B6B",
+  enterprise: "#27AE60",
+  education: "#8E44AD",
+  productivity: "#E74C3C",
+  devops: "#95A5A6",
 };
 
 const EMOJI_PRESETS = [
@@ -57,6 +73,8 @@ export function AgentManagerView({
   const [availableSkills, setAvailableSkills] = useState<SkillItem[]>([]);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<{ text: string; type: "ok" | "err" } | null>(null);
+  const [activeCategory, setActiveCategory] = useState<Category>("");
+  const [showHidden, setShowHidden] = useState(false);
 
   const showToast = useCallback((text: string, type: "ok" | "err" = "ok") => {
     setToastMsg({ text, type });
@@ -83,7 +101,7 @@ export function AgentManagerView({
     if (!multiAgentEnabled) return;
     setLoading(true);
     try {
-      const res = await fetch(`${apiBaseUrl}/api/agents/profiles`);
+      const res = await fetch(`${apiBaseUrl}/api/agents/profiles?include_hidden=true`);
       if (res.ok) {
         const data = await res.json();
         setProfiles(data.profiles || []);
@@ -154,6 +172,7 @@ export function AgentManagerView({
         skills: editingProfile.skills,
         skills_mode: editingProfile.skills_mode,
         custom_prompt: editingProfile.custom_prompt,
+        category: editingProfile.category || "",
       };
 
       const url = isCreating
@@ -206,6 +225,41 @@ export function AgentManagerView({
     });
   };
 
+  const handleVisibility = async (profileId: string, hidden: boolean) => {
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/agents/profiles/${profileId}/visibility`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hidden }),
+      });
+      if (res.ok) {
+        fetchProfiles();
+        showToast(t(hidden ? "agentManager.hideSuccess" : "agentManager.restoreSuccess"), "ok");
+      }
+    } catch (e) {
+      showToast(String(e), "err");
+    }
+  };
+
+  const getCategoryLabel = (cat: string): string => {
+    const map: Record<string, string> = {
+      "": "categoryAll",
+      general: "categoryGeneral",
+      content: "categoryContent",
+      enterprise: "categoryEnterprise",
+      education: "categoryEducation",
+      productivity: "categoryProductivity",
+      devops: "categoryDevops",
+    };
+    return t(`agentManager.${map[cat] || "categoryAll"}`);
+  };
+
+  const visibleProfiles = profiles.filter((p) => !p.hidden);
+  const hiddenProfiles = profiles.filter((p) => p.hidden);
+  const filteredProfiles = activeCategory
+    ? visibleProfiles.filter((p) => p.category === activeCategory)
+    : visibleProfiles;
+
   if (!multiAgentEnabled) {
     return (
       <div style={{ padding: 40, textAlign: "center", opacity: 0.5 }}>
@@ -218,7 +272,7 @@ export function AgentManagerView({
   return (
     <div style={{ padding: 20, position: "relative", overflow: "auto", height: "100%" }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
         <IconBot size={24} />
         <h2 style={{ margin: 0, fontSize: 18 }}>{t("agentManager.title")}</h2>
         <div style={{ flex: 1 }} />
@@ -248,9 +302,28 @@ export function AgentManagerView({
         </button>
       </div>
 
+      {/* Category Tabs */}
+      <div style={{ display: "flex", gap: 4, marginBottom: 20, flexWrap: "wrap" }}>
+        {CATEGORIES.map((cat) => (
+          <button
+            key={cat || "__all"}
+            onClick={() => setActiveCategory(cat)}
+            style={{
+              padding: "5px 14px", borderRadius: 20, border: "1px solid var(--line)",
+              background: activeCategory === cat ? (CATEGORY_COLORS[cat] || "var(--primary, #3b82f6)") : "var(--panel)",
+              color: activeCategory === cat ? "#fff" : "inherit",
+              cursor: "pointer", fontSize: 12, fontWeight: activeCategory === cat ? 600 : 400,
+              transition: "all 0.15s",
+            }}
+          >
+            {getCategoryLabel(cat)}
+          </button>
+        ))}
+      </div>
+
       {/* Agent Grid */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14 }}>
-        {profiles.map((agent) => {
+        {filteredProfiles.map((agent) => {
           const isSystem = agent.type === "system";
           return (
             <div
@@ -267,8 +340,19 @@ export function AgentManagerView({
               {/* Color bar */}
               <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: agent.color || "var(--brand)" }} />
 
-              {/* Badge */}
-              <div style={{ position: "absolute", top: 8, right: 8 }}>
+              {/* Badges */}
+              <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 4 }}>
+                {agent.category && (
+                  <span
+                    style={{
+                      fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4,
+                      background: `${CATEGORY_COLORS[agent.category] || "#6b7280"}20`,
+                      color: CATEGORY_COLORS[agent.category] || "#6b7280",
+                    }}
+                  >
+                    {getCategoryLabel(agent.category)}
+                  </span>
+                )}
                 <span
                   style={{
                     fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4,
@@ -289,46 +373,115 @@ export function AgentManagerView({
                 </div>
               </div>
               <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 10, minHeight: 18, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {agent.description || "—"}
+                {agent.description || "\u2014"}
               </div>
 
               {/* Actions */}
-              {!isSystem && (
-                <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8 }}>
+                {!isSystem && (
+                  <>
+                    <button
+                      onClick={() => openEditEditor(agent)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 4,
+                        padding: "4px 10px", borderRadius: 6, border: "1px solid var(--line)",
+                        background: "transparent", cursor: "pointer", fontSize: 12,
+                      }}
+                    >
+                      <IconEdit size={12} />
+                      {t("agentManager.edit")}
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteId(agent.id)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 4,
+                        padding: "4px 10px", borderRadius: 6, border: "1px solid var(--line)",
+                        background: "transparent", cursor: "pointer", fontSize: 12,
+                        color: "#ef4444",
+                      }}
+                    >
+                      <IconTrash size={12} />
+                      {t("agentManager.delete")}
+                    </button>
+                  </>
+                )}
+                {isSystem && (
                   <button
-                    onClick={() => openEditEditor(agent)}
+                    onClick={() => handleVisibility(agent.id, true)}
                     style={{
                       display: "flex", alignItems: "center", gap: 4,
                       padding: "4px 10px", borderRadius: 6, border: "1px solid var(--line)",
                       background: "transparent", cursor: "pointer", fontSize: 12,
+                      opacity: 0.6,
                     }}
                   >
-                    <IconEdit size={12} />
-                    {t("agentManager.edit")}
+                    {t("agentManager.hide")}
                   </button>
-                  <button
-                    onClick={() => setConfirmDeleteId(agent.id)}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 4,
-                      padding: "4px 10px", borderRadius: 6, border: "1px solid var(--line)",
-                      background: "transparent", cursor: "pointer", fontSize: 12,
-                      color: "#ef4444",
-                    }}
-                  >
-                    <IconTrash size={12} />
-                    {t("agentManager.delete")}
-                  </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           );
         })}
       </div>
 
-      {profiles.length === 0 && !loading && (
+      {filteredProfiles.length === 0 && !loading && (
         <div style={{ textAlign: "center", padding: 40, opacity: 0.5 }}>
           <IconBot size={40} />
           <div style={{ marginTop: 8 }}>{t("common.noData")}</div>
+        </div>
+      )}
+
+      {/* Hidden Agents Section */}
+      {hiddenProfiles.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <button
+            onClick={() => setShowHidden((v) => !v)}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "6px 12px", borderRadius: 8, border: "1px solid var(--line)",
+              background: "var(--panel)", cursor: "pointer", fontSize: 12,
+              opacity: 0.7, width: "100%", justifyContent: "center",
+            }}
+          >
+            {t("agentManager.hiddenSection")} ({hiddenProfiles.length})
+            <span style={{ fontSize: 10, transform: showHidden ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }}>&#9660;</span>
+          </button>
+          {showHidden && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14, marginTop: 12 }}>
+              {hiddenProfiles.map((agent) => (
+                <div
+                  key={agent.id}
+                  style={{
+                    padding: 16, borderRadius: 12,
+                    background: "var(--panel)", border: "1px solid var(--line)",
+                    position: "relative", overflow: "hidden",
+                    opacity: 0.5, transition: "opacity 0.2s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.8")}
+                  onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.5")}
+                >
+                  <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: agent.color || "var(--brand)" }} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, marginTop: 4 }}>
+                    <span style={{ fontSize: 28, lineHeight: 1 }}>{agent.icon}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{agent.name}</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleVisibility(agent.id, false)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 4,
+                      padding: "4px 10px", borderRadius: 6, border: "1px solid var(--line)",
+                      background: "transparent", cursor: "pointer", fontSize: 12,
+                      color: "#10b981",
+                    }}
+                  >
+                    {t("agentManager.restore")}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -446,6 +599,20 @@ export function AgentManagerView({
               style={inputStyle}
               placeholder="A brief description..."
             />
+
+            {/* Category */}
+            <label style={labelStyle}>{t("agentManager.category")}</label>
+            <select
+              value={editingProfile.category || ""}
+              onChange={(e) => setEditingProfile((p) => ({ ...p, category: e.target.value }))}
+              disabled={editingProfile.type === "system"}
+              style={{ ...inputStyle, cursor: editingProfile.type === "system" ? "not-allowed" : "pointer", opacity: editingProfile.type === "system" ? 0.5 : 1 }}
+            >
+              <option value="">—</option>
+              {CATEGORIES.filter(Boolean).map((cat) => (
+                <option key={cat} value={cat}>{getCategoryLabel(cat)}</option>
+              ))}
+            </select>
 
             {/* Icon + Color row */}
             <div style={{ display: "flex", gap: 12, marginBottom: 4 }}>

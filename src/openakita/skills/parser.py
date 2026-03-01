@@ -76,19 +76,25 @@ class SkillMetadata:
         self._validate_description()
 
     def _validate_name(self):
-        """验证 name 字段"""
+        """验证 name 字段。
+
+        支持两种格式:
+        - 简单名:  ``my-skill``
+        - 命名空间: ``owner/repo@skill-name``
+        """
         if not self.name:
             raise ValueError("name field is required")
 
-        if len(self.name) > 64:
-            raise ValueError(f"name must be <= 64 characters, got {len(self.name)}")
+        if len(self.name) > 128:
+            raise ValueError(f"name must be <= 128 characters, got {len(self.name)}")
 
-        # 只允许小写字母、数字、连字符
-        pattern = r"^[a-z0-9]+(-[a-z0-9]+)*$"
+        _SIMPLE = r"[a-z0-9]+(-[a-z0-9]+)*"
+        _NAMESPACE = rf"{_SIMPLE}/{_SIMPLE}@{_SIMPLE}"
+        pattern = rf"^({_NAMESPACE}|{_SIMPLE})$"
         if not re.match(pattern, self.name):
             raise ValueError(
-                f"name must contain only lowercase letters, numbers, and hyphens. "
-                f"Cannot start/end with hyphen or have consecutive hyphens. Got: {self.name}"
+                f"name must be lowercase alphanumeric with hyphens, "
+                f"optionally namespaced as 'owner/repo@skill-name'. Got: {self.name}"
             )
 
     def _validate_description(self):
@@ -204,12 +210,13 @@ class SkillParser:
         # 构建元数据
         metadata = self._build_metadata(data, path)
 
-        # 验证目录名匹配
+        # 验证目录名匹配（命名空间格式取 @ 后部分比较）
         skill_dir = path.parent
-        if skill_dir.name != metadata.name:
+        expected_dir = metadata.name.split("@", 1)[-1] if "@" in metadata.name else metadata.name
+        if skill_dir.name != expected_dir:
             logger.warning(
                 f"Skill directory name '{skill_dir.name}' does not match "
-                f"skill name '{metadata.name}' in {path}"
+                f"expected '{expected_dir}' (from skill name '{metadata.name}') in {path}"
             )
 
         # 查找可选目录
@@ -307,11 +314,16 @@ class SkillParser:
         """
         errors = []
 
-        # 检查目录名匹配
-        if skill.skill_dir.name != skill.metadata.name:
+        # 检查目录名匹配（命名空间格式取 @ 后部分）
+        expected_dir = (
+            skill.metadata.name.split("@", 1)[-1]
+            if "@" in skill.metadata.name
+            else skill.metadata.name
+        )
+        if skill.skill_dir.name != expected_dir:
             errors.append(
-                f"Directory name '{skill.skill_dir.name}' must match "
-                f"skill name '{skill.metadata.name}'"
+                f"Directory name '{skill.skill_dir.name}' should match "
+                f"expected '{expected_dir}' (from skill name '{skill.metadata.name}')"
             )
 
         # 检查 body 长度 (建议 < 5000 tokens, 约 500 行)

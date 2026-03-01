@@ -44,6 +44,7 @@ class ProfileCreateRequest(BaseModel):
     skills: list[str] = Field(default_factory=list)
     skills_mode: str = Field("all")
     custom_prompt: str = Field("", max_length=2000)
+    category: str = Field("", max_length=30)
 
 
 class ProfileUpdateRequest(BaseModel):
@@ -54,6 +55,11 @@ class ProfileUpdateRequest(BaseModel):
     skills: list[str] | None = None
     skills_mode: str | None = None
     custom_prompt: str | None = Field(None, max_length=2000)
+    category: str | None = Field(None, max_length=30)
+
+
+class ProfileVisibilityRequest(BaseModel):
+    hidden: bool
 
 
 # ─── Bot CRUD routes ─────────────────────────────────────────────────────
@@ -166,8 +172,12 @@ async def toggle_bot(bot_id: str, body: BotToggleRequest):
 
 
 @router.get("/api/agents/profiles")
-async def list_agent_profiles():
-    """Return available agent profiles (system presets + user-created)."""
+async def list_agent_profiles(include_hidden: bool = False):
+    """Return available agent profiles (system presets + user-created).
+
+    Query params:
+        include_hidden: if True, also return hidden profiles (default False).
+    """
     from openakita.agents.presets import SYSTEM_PRESETS
     from openakita.agents.profile import ProfileStore
     from openakita.config import settings
@@ -175,27 +185,29 @@ async def list_agent_profiles():
     if not settings.multi_agent_enabled:
         return {"profiles": [], "multi_agent_enabled": False}
 
+    store = ProfileStore(settings.data_dir / "agents")
+    stored_map = {p.id: p for p in store.list_all(include_hidden=True)}
+
+    preset_order = [p.id for p in SYSTEM_PRESETS]
     seen_ids: set[str] = set()
     profiles = []
-    for p in SYSTEM_PRESETS:
-        seen_ids.add(p.id)
-        profiles.append({
-            "id": p.id,
-            "name": p.name,
-            "description": p.description,
-            "icon": p.icon,
-            "color": p.color,
-            "type": p.type.value if hasattr(p.type, "value") else str(p.type),
-            "skills": getattr(p, "skills", []),
-            "skills_mode": p.skills_mode.value if hasattr(p, "skills_mode") else "all",
-            "custom_prompt": getattr(p, "custom_prompt", ""),
-            "name_i18n": p.name_i18n,
-            "description_i18n": p.description_i18n,
-        })
 
-    store = ProfileStore(settings.data_dir / "agents")
-    for p in store.list_all():
+    for pid in preset_order:
+        seen_ids.add(pid)
+        p = stored_map.get(pid)
+        if p is None:
+            preset = next((x for x in SYSTEM_PRESETS if x.id == pid), None)
+            if preset is None:
+                continue
+            p = preset
+        if not include_hidden and p.hidden:
+            continue
+        profiles.append(p.to_dict())
+
+    for p in store.list_all(include_hidden=True):
         if p.id not in seen_ids:
+            if not include_hidden and p.hidden:
+                continue
             profiles.append(p.to_dict())
 
     return {"profiles": profiles, "multi_agent_enabled": True}
@@ -229,6 +241,7 @@ async def create_agent_profile(body: ProfileCreateRequest):
         custom_prompt=body.custom_prompt,
         icon=body.icon,
         color=body.color,
+        category=body.category,
         created_by="user",
     )
 
@@ -286,6 +299,25 @@ async def delete_agent_profile(profile_id: str):
 
     logger.info(f"[Agents API] Deleted profile: {profile_id}")
     return {"status": "ok"}
+
+
+@router.patch("/api/agents/profiles/{profile_id}/visibility")
+async def update_profile_visibility(profile_id: str, body: ProfileVisibilityRequest):
+    """Show or hide an agent profile (works for both SYSTEM and CUSTOM)."""
+    from openakita.agents.profile import ProfileStore
+    from openakita.config import settings
+
+    if not settings.multi_agent_enabled:
+        raise HTTPException(status_code=400, detail="Multi-agent mode is not enabled")
+
+    store = ProfileStore(settings.data_dir / "agents")
+    try:
+        updated = store.update(profile_id, {"hidden": body.hidden})
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Profile '{profile_id}' not found")
+
+    logger.info(f"[Agents API] Visibility updated: {profile_id} hidden={body.hidden}")
+    return {"status": "ok", "profile": updated.to_dict()}
 
 
 @router.get("/api/agents/health")
