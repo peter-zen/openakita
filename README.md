@@ -5,7 +5,7 @@
 <h1 align="center">OpenAkita</h1>
 
 <p align="center">
-  <strong>Self-Evolving AI Agent — Learns Autonomously, Never Gives Up</strong>
+  <strong>Open-Source Multi-Agent AI Assistant — Not Just Chat, an AI Team That Gets Things Done</strong>
 </p>
 
 <p align="center">
@@ -17,11 +17,15 @@
 </p>
 
 <p align="center">
-  <a href="#desktop-terminal">Desktop Terminal</a> •
-  <a href="#features">Features</a> •
-  <a href="#quick-start">Quick Start</a> •
-  <a href="#architecture">Architecture</a> •
-  <a href="#documentation">Documentation</a>
+  Multi-Agent Collaboration · 30+ LLMs · 6 IM Platforms · 89+ Tools · GUI Setup, Zero Command Line
+</p>
+
+<p align="center">
+  <a href="#core-capabilities">Capabilities</a> •
+  <a href="#5-minute-setup">5-Min Setup</a> •
+  <a href="#desktop-app">Desktop App</a> •
+  <a href="#multi-agent-collaboration">Multi-Agent</a> •
+  <a href="#documentation">Docs</a>
 </p>
 
 <p align="center">
@@ -32,152 +36,105 @@
 
 ## What is OpenAkita?
 
-**An AI Agent that keeps getting smarter while you sleep.**
+**Other AIs just chat. OpenAkita gets things done.**
 
-Most AI assistants forget you the moment the chat ends. OpenAkita teaches itself new skills, fixes its own bugs, and remembers everything you've told it — like the Akita dog it's named after: **loyal, reliable, never quits**.
+OpenAkita is an open-source, all-in-one AI assistant — multiple AI Agents work together, search the web, operate your computer, manage files, run scheduled tasks, and respond instantly across Telegram / Slack / DingTalk / Feishu / QQ. It remembers your preferences, teaches itself new skills, and never gives up on a task.
 
-Set up in 3 minutes with just an API key. 8 personas, 6 IM platforms, and yes — it sends memes.
+**Fully GUI-based setup. Ready in 5 minutes. Zero command line required.**
+
+> **Download**: [GitHub Releases](https://github.com/openakita/openakita/releases) — Windows / macOS / Linux
 
 ---
 
-## Desktop Terminal
-
-<p align="center">
-  <img src="docs/assets/desktop_terminal_en.png" alt="OpenAkita Desktop Terminal" width="800" />
-</p>
-
-OpenAkita provides a cross-platform **Desktop Terminal** (built with Tauri + React) — an all-in-one AI assistant with chat, configuration, monitoring, and skill management:
-
-- **AI Chat Assistant** — Streaming output, Markdown rendering, multimodal input, Thinking display, Plan mode
-- **Bilingual (CN/EN)** — Auto-detects system language, one-click switch, fully internationalized
-- **Localization & i18n** — First-class support for Chinese and international ecosystems, PyPI mirrors, IM channels
-- **LLM Endpoint Manager** — Multi-provider, multi-endpoint, auto-failover, online model list fetching
-- **IM Channel Setup** — Telegram, Feishu, WeCom, DingTalk, QQ Official Bot, OneBot — all in one place
-- **Persona & Living Presence** — 8 role presets, proactive greetings, memory recall, learns your preferences
-- **Skill Marketplace** — Browse, download, configure skills in one place
-- **Status Monitor** — Compact dashboard: service/LLM/IM health at a glance
-- **System Tray** — Background residency + auto-start on boot, one-click start/stop
-
-> **Download**: [GitHub Releases](https://github.com/openakita/openakita/releases)
->
-> Available for Windows (.exe) / macOS (.dmg) / Linux (.deb / .AppImage)
-
-### 3-Minute Quick Setup — Zero to Chatting
-
-No command line. No config files. **From install to conversation in 3 minutes**:
-
-<p align="center">
-  <img src="docs/assets/desktop_quick_config.gif" alt="OpenAkita Quick Setup vs Full Setup" width="800" />
-</p>
+## Core Capabilities
 
 <table>
-<tr>
-<td width="50%">
+<tr><td>
 
-**Quick Setup (Recommended for new users)**
+### 🤝 Multi-Agent Collaboration
+Multiple AI agents with specialized skills work in parallel.
+Say one thing — a coding Agent writes code, a writing Agent drafts docs, a testing Agent verifies — all at the same time.
 
-```
-① Fill in  → Add LLM endpoint + IM (optional)
-② One-click → Auto-create env, install deps, write config
-③ Done      → Launch service, start chatting
-```
+### 📋 Plan Mode
+Complex tasks auto-decomposed into step-by-step plans with real-time progress tracking and automatic rollback on failure.
 
-Just one API Key, everything else is automatic:
-- Auto-create workspace
-- Auto-download & install Python 3.11
-- Auto-create venv + pip install
-- Auto-write 40+ recommended defaults
-- Auto-save IM channel settings
+### 🧠 ReAct Reasoning Engine
+Think → Act → Observe. Explicit three-phase reasoning with checkpoint/rollback. Fails? Tries a different strategy.
 
-</td>
-<td width="50%">
+### 🔧 89+ Tools — Actually Does Things
+Web search · Desktop automation · File management · Browser automation · Scheduled tasks · MCP extensions …
 
-**Full Setup (Power users)**
+</td><td>
 
-```
-Workspace → Python → Install → LLM Endpoints
-→ IM Channels → Tools & Skills → Agent System → Finish
-```
+### 🚀 5-Min Setup — Zero Command Line
+Download → Install → Follow the wizard → Enter API Key → Start chatting. Fully GUI-based, no terminal needed.
 
-8-step guided wizard with full control:
-- Custom workspaces (multi-env isolation)
-- Choose Python version & install source
-- Configure desktop automation, MCP tools
-- Tune persona, living presence parameters
-- Logging, memory, scheduler & more
+### 🌐 30+ LLM Providers
+DeepSeek / Qwen / Kimi / Claude / GPT / Gemini … One goes down, the next picks up automatically.
 
-</td>
-</tr>
+### 💬 6 IM Platforms
+Telegram / Feishu / WeCom / DingTalk / QQ / OneBot — use AI right inside your daily chat tools.
+
+### 💾 Long-Term Memory
+Three-layer memory system + AI extraction. Remembers your preferences, habits, and task history.
+
+</td></tr>
 </table>
 
-> Switch between modes anytime — click "Switch Setup Mode" in the sidebar to return to the selection page without losing existing configuration.
->
-> See [Configuration Guide](docs/configuration-guide.md) for full details.
-
 ---
 
-## Features
+## Full Feature List
 
-| | Feature | In One Line |
+| | Feature | Description |
 |:---:|---------|-------------|
-| **1** | **Self-Learning & Evolution** | Daily self-check, memory consolidation, task retrospection, auto skill generation — it gets smarter while you sleep |
-| **2** | **8 Personas + Living Presence** | Girlfriend / Butler / Jarvis… not just role-play — proactive greetings, remembers your birthday, auto-mutes at night |
-| **3** | **3-Min Quick Setup** | Desktop app, one-click start — just drop in an API Key, Python/env/deps/config all automatic |
-| **4** | **Plan Mode** | Complex tasks auto-decomposed into multi-step plans, real-time tracking, Plan → Act → Verify loop until done |
-| **5** | **Dynamic Multi-LLM** | 9+ providers hot-swappable, priority routing + auto-failover, one goes down, next picks up seamlessly |
-| **6** | **Skill + MCP Standards** | Agent Skills / MCP open standards, one-click GitHub skill install, plug-and-play ecosystem |
-| **7** | **7 IM Platforms** | Telegram / Feishu / WeCom / DingTalk / QQ Official Bot / OneBot / CLI — wherever you are, it's there |
-| **8** | **AI That Sends Memes** | Probably the first AI Agent that "meme-battles" — 5700+ stickers, mood-aware, persona-matched (powered by [ChineseBQB](https://github.com/zhaoolee/ChineseBQB)) |
+| 🤝 | **Multi-Agent** | Specialized agents, parallel delegation, automatic handoff, failover, real-time visual dashboard |
+| 📋 | **Plan Mode** | Auto task decomposition, per-step tracking, floating progress bar in UI |
+| 🧠 | **ReAct Reasoning** | Explicit 3-phase loop, checkpoint/rollback, loop detection, strategy switching |
+| 🚀 | **Zero-Barrier Setup** | Full GUI config, onboarding wizard, 5 minutes from install to chat, zero CLI |
+| 🔧 | **89+ Built-in Tools** | 16 categories: Shell / Files / Browser / Desktop / Search / Scheduler / MCP … |
+| 🛒 | **Skill Marketplace** | Search & one-click install, GitHub direct install, AI-generated skills on the fly |
+| 🌐 | **30+ LLM Providers** | Anthropic / OpenAI / DeepSeek / Qwen / Kimi / MiniMax / Gemini … smart failover |
+| 💬 | **6 IM Platforms** | Telegram / Feishu / WeCom / DingTalk / QQ / OneBot, voice recognition, smart group chat |
+| 💾 | **3-Layer Memory** | Working + Core + Dynamic retrieval, 7 memory types, AI-driven extraction & review |
+| 🎭 | **8 Personas** | Default / Tech Expert / Boyfriend / Girlfriend / Jarvis / Butler / Business / Family |
+| 🤖 | **Proactive Engine** | Greetings, task follow-ups, idle chat, goodnight — adapts frequency to your feedback |
+| 🧬 | **Self-Evolution** | Daily self-check & repair, failure root cause analysis, auto skill generation |
+| 🔍 | **Deep Thinking** | Controllable thinking mode, real-time chain-of-thought display, IM streaming |
+| 🛡️ | **Runtime Supervision** | Tool thrashing detection, resource budgets, policy engine, deterministic validators |
+| 🔒 | **Safety & Governance** | POLICIES.yaml, dangerous ops require confirmation, local data storage |
+| 🖥️ | **Desktop App** | Tauri 2.x cross-platform, 11 panels, dark theme, auto-update |
+| 📊 | **Observability** | 12 trace span types, full-chain token statistics panel |
+| 😄 | **Stickers** | 5700+ stickers, mood-aware, persona-matched |
 
 ---
 
-## How Does It Keep Getting Smarter?
-
-Other AIs forget you the moment you close the chat. OpenAkita **self-evolves** — while you sleep, it's learning:
-
-```
-Every day 03:00  →  Memory consolidation: semantic dedup, extract insights, refresh MEMORY.md
-Every day 04:00  →  Self-check: analyze error logs → LLM diagnosis → auto-fix → report
-After each task   →  Retrospection: analyze efficiency, extract lessons, store long-term
-When stuck        →  Auto-generate skills + install dependencies — it won't be stuck next time
-Every chat turn   →  Mine your preferences and habits — gets to know you over time
-```
-
-> Example: You ask it to write Python, it finds a missing package — auto `pip install`. Needs a new tool — auto-generates a Skill. Next morning, it's already fixed yesterday's bugs.
-
----
-
-## Recommended Models
-
-| Model | Provider | Notes |
-|-------|----------|-------|
-| `claude-sonnet-4-5-*` | Anthropic | Default, balanced |
-| `claude-opus-4-5-*` | Anthropic | Most capable |
-| `qwen3-max` | Alibaba | Strong Chinese support |
-| `deepseek-v3` | DeepSeek | Cost-effective |
-| `kimi-k2.5` | Moonshot | Long-context |
-| `minimax-m2.1` | MiniMax | Great for dialogue |
-
-> For complex reasoning, enable Thinking mode — just add `-thinking` suffix to the model name (e.g., `claude-opus-4-5-20251101-thinking`).
-
----
-
-## Quick Start
+## 5-Minute Setup
 
 ### Option 1: Desktop App (Recommended)
 
-The easiest way — download, drop in an API Key, click, done:
+**Fully GUI-based, no command line** — this is what sets OpenAkita apart from other open-source AI assistants:
 
-1. Download from [GitHub Releases](https://github.com/openakita/openakita/releases) (Windows / macOS / Linux)
-2. Install and launch OpenAkita Desktop
-3. Choose **Quick Setup** → Add LLM endpoint → Click "Start Setup" → All automatic → Start chatting
+<p align="center">
+  <img src="docs/assets/desktop_quick_config.gif" alt="OpenAkita Quick Setup" width="800" />
+</p>
 
-> Need full control? Choose **Full Setup**: Workspace → Python → Install → LLM → IM → Tools → Agent → Finish
+| Step | What You Do | Time |
+|:----:|-------------|:----:|
+| 1 | Download installer, double-click to install | 1 min |
+| 2 | Follow the onboarding wizard, enter API Key | 2 min |
+| 3 | Start chatting | Now |
+
+- No Python installation, no git clone, no config file editing
+- Isolated runtime — won't mess with your existing system
+- Chinese users get automatic mirror switching
+- Models, IM channels, skills, schedules — all configured in the GUI
+
+> **Download**: [GitHub Releases](https://github.com/openakita/openakita/releases) — Windows (.exe) / macOS (.dmg) / Linux (.deb)
 
 ### Option 2: pip Install
 
 ```bash
-pip install openakita[all]    # Install (with all optional features)
+pip install openakita[all]    # Install with all optional features
 openakita init                # Run setup wizard
 openakita                     # Launch interactive CLI
 ```
@@ -198,17 +155,153 @@ openakita init
 openakita                              # Interactive chat
 openakita run "Build a calculator"     # Execute a single task
 openakita serve                        # Service mode (IM channels)
+openakita serve --dev                  # Dev mode with hot reload
 openakita daemon start                 # Background daemon
 openakita status                       # Check status
 ```
 
-### Minimum Config
+---
 
-```bash
-# .env (just two lines to get started)
-ANTHROPIC_API_KEY=your-api-key     # Or DASHSCOPE_API_KEY, etc.
-TELEGRAM_BOT_TOKEN=your-bot-token  # Optional — connect Telegram
+## Desktop App
+
+<p align="center">
+  <img src="docs/assets/desktop_terminal_en.png" alt="OpenAkita Desktop App" width="800" />
+</p>
+
+Cross-platform desktop app built with **Tauri 2.x + React + TypeScript**:
+
+| Panel | Function |
+|-------|----------|
+| **Chat** | AI chat, streaming output, Thinking display, drag & drop upload, image lightbox |
+| **Agent Dashboard** | Neural network visualization, real-time multi-Agent status tracking |
+| **Agent Manager** | Create, manage, and configure multiple Agents |
+| **IM Channels** | One-stop setup for all 6 platforms |
+| **Skills** | Marketplace search, install, enable/disable |
+| **MCP** | MCP server management |
+| **Memory** | Memory management + LLM-powered review |
+| **Scheduler** | Scheduled task management |
+| **Token Stats** | Token usage statistics |
+| **Config** | LLM endpoints, system settings, advanced options |
+| **Feedback** | Bug reports + feature requests |
+
+Dark/light theme · Onboarding wizard · Auto-update · Bilingual (EN/CN) · Start on boot
+
+---
+
+## Multi-Agent Collaboration
+
+OpenAkita has a built-in multi-Agent orchestration system — not just one AI, but an **AI team**:
+
 ```
+You: "Create a competitive analysis report"
+    │
+    ▼
+┌──────────────────────────────────────┐
+│      AgentOrchestrator (Director)     │
+│   Decomposes task → Assigns to Agents │
+└───┬────────────┬──────────────┬──────┘
+    ▼            ▼              ▼
+ Search Agent  Analysis Agent  Writing Agent
+ (web research) (data crunching) (report drafting)
+    │            │              │
+    └────────────┴──────────────┘
+                 ▼
+         Results merged, delivered to you
+```
+
+- **Specialization**: Different Agents for different domains, auto-matched to tasks
+- **Parallel Processing**: Multiple Agents work simultaneously
+- **Auto Handoff**: If one Agent gets stuck, it hands off to a better-suited one
+- **Failover**: Agent failure triggers automatic switch to backup
+- **Depth Control**: Max 5 delegation levels to prevent runaway recursion
+- **Visual Tracking**: Agent Dashboard shows real-time status of every Agent
+
+---
+
+## 30+ LLM Providers
+
+**No vendor lock-in. Mix and match freely:**
+
+| Category | Providers |
+|----------|-----------|
+| **Local** | Ollama · LM Studio |
+| **International** | Anthropic · OpenAI · Google Gemini · xAI (Grok) · Mistral · OpenRouter · NVIDIA NIM · Groq · Together AI · Fireworks · Cohere |
+| **China** | Alibaba DashScope · Kimi (Moonshot) · MiniMax · DeepSeek · SiliconFlow · Volcengine · Zhipu AI · Baidu Qianfan · Tencent Hunyuan · Yunwu · Meituan LongCat · iFlow |
+
+**7 capability dimensions**: Text · Vision · Video · Tool use · Thinking · Audio · PDF
+
+**Smart failover**: One model goes down, the next picks up seamlessly.
+
+### Recommended Models
+
+| Model | Provider | Notes |
+|-------|----------|-------|
+| `claude-sonnet-4-5-*` | Anthropic | Default, balanced |
+| `claude-opus-4-5-*` | Anthropic | Most capable |
+| `qwen3-max` | Alibaba | Strong Chinese support |
+| `deepseek-v3` | DeepSeek | Cost-effective |
+| `kimi-k2.5` | Moonshot | Long-context |
+| `minimax-m2.1` | MiniMax | Great for dialogue |
+
+> For complex reasoning, enable Thinking mode — add `-thinking` suffix to the model name.
+
+---
+
+## 6 IM Platforms
+
+Talk to your AI right inside the chat tools you already use:
+
+| Platform | Connection | Highlights |
+|----------|-----------|------------|
+| **Telegram** | Webhook / Long Polling | Pairing verification, Markdown, proxy support |
+| **Feishu** | WebSocket / Webhook | Card messages, event subscriptions |
+| **WeCom** | Smart Robot callback | Streaming replies, proactive push |
+| **DingTalk** | Stream WebSocket | No public IP needed |
+| **QQ Official** | WebSocket / Webhook | Groups, DMs, channels |
+| **OneBot** | WebSocket | Compatible with NapCat / Lagrange / go-cqhttp |
+
+- 📷 **Vision**: Send screenshots/photos — AI understands them
+- 🎤 **Voice**: Send voice messages — auto-transcribed and processed
+- 📎 **File Delivery**: AI-generated files pushed directly to chat
+- 👥 **Group Chat**: Replies when @mentioned, stays quiet otherwise
+- 💭 **Chain-of-Thought**: Real-time reasoning process streamed to IM
+
+---
+
+## Memory System
+
+Not just a "context window" — true long-term memory:
+
+- **Three layers**: Working memory (current task) + Core memory (user profile) + Dynamic retrieval (past experience)
+- **7 memory types**: Fact / Preference / Skill / Error / Rule / Persona trait / Experience
+- **AI-driven extraction**: Automatically distills valuable information after each conversation
+- **Multi-path recall**: Semantic + full-text + temporal + attachment search
+- **Gets smarter over time**: Preferences you mentioned two months ago? Still remembered.
+
+---
+
+## Self-Evolution
+
+OpenAkita keeps getting stronger:
+
+```
+Daily 04:00   →  Self-check: analyze error logs → AI diagnosis → auto-fix → push report
+After failure →  Root cause analysis (context loss / tool limitation / loop / budget) → suggestions
+Missing skill →  Auto-search GitHub for skills, or AI generates one on the spot
+Missing dep   →  Auto pip install, auto mirror switching for China
+Every chat    →  Extract preferences and experience → long-term memory
+```
+
+---
+
+## Safety & Governance
+
+- **Policy Engine**: POLICIES.yaml for tool permissions, shell command blocklist, path restrictions
+- **Confirmation**: Dangerous operations (file deletion, system commands) require user approval
+- **Resource Budgets**: Token / cost / duration / iteration / tool call limits per task
+- **Runtime Supervision**: Auto-detection of tool thrashing, reasoning loops, token anomalies
+- **Local Data**: Memory, config, and chat history stored on your machine only
+- **Open Source**: Apache 2.0, fully transparent codebase
 
 ---
 
@@ -217,21 +310,26 @@ TELEGRAM_BOT_TOKEN=your-bot-token  # Optional — connect Telegram
 ```
 Desktop App (Tauri + React)
     │
-Identity ─── SOUL.md · AGENT.md · USER.md · MEMORY.md · 8 Persona Presets
+Identity ─── SOUL.md · AGENT.md · POLICIES.yaml · 8 Persona Presets
     │
-Core     ─── Brain(LLM) · Memory(Vector) · Ralph(Never-Give-Up Loop)
-    │        Prompt Compiler · PersonaManager · ProactiveEngine
+Core     ─── ReasoningEngine(ReAct) · Brain(LLM) · ContextManager
+    │        PromptAssembler · RuntimeSupervisor · ResourceBudget
     │
-Tools    ─── Shell · File · Web · Browser · Desktop · MCP · Skills
-    │        Scheduler · Plan · Sticker · Persona
+Agents   ─── AgentOrchestrator(Coordination) · AgentInstancePool(Pooling)
+    │        AgentFactory · FallbackResolver(Failover)
     │
-Evolution ── SelfCheck · Generator · Installer · LogAnalyzer
-    │        DailyConsolidator
+Memory   ─── UnifiedStore(SQLite+Vector) · RetrievalEngine(Multi-path)
+    │        MemoryExtractor · MemoryConsolidator
     │
-Channels ─── CLI · Telegram · Feishu · WeCom · DingTalk · QQ Official · OneBot
+Tools    ─── Shell · File · Browser · Desktop · Web · MCP · Skills
+    │        Plan · Scheduler · Sticker · Persona · Agent Delegation
+    │
+Evolution ── SelfCheck · FailureAnalyzer · SkillGenerator · Installer
+    │
+Channels ─── CLI · Telegram · Feishu · WeCom · DingTalk · QQ · OneBot
+    │
+Tracing  ─── AgentTracer(12 SpanTypes) · DecisionTrace · TokenStats
 ```
-
-> See [Architecture Doc](docs/architecture.md) for full details.
 
 ---
 
@@ -240,13 +338,12 @@ Channels ─── CLI · Telegram · Feishu · WeCom · DingTalk · QQ Official
 | Document | Content |
 |----------|---------|
 | [Configuration Guide](docs/configuration-guide.md) | Desktop Quick Setup & Full Setup walkthrough |
-| ⭐ [LLM Provider Setup](docs/llm-provider-setup-tutorial.md) | **API Key registration + endpoint config + multi-endpoint Failover** |
-| ⭐ [IM Channel Setup](docs/im-channel-setup-tutorial.md) | **Telegram / Feishu / DingTalk / WeCom / QQ Official Bot / OneBot step-by-step tutorial** |
+| ⭐ [LLM Provider Setup](docs/llm-provider-setup-tutorial.md) | **API Key registration + endpoint config + Failover** |
+| ⭐ [IM Channel Setup](docs/im-channel-setup-tutorial.md) | **Telegram / Feishu / DingTalk / WeCom / QQ / OneBot tutorial** |
 | [Quick Start](docs/getting-started.md) | Installation and basics |
 | [Architecture](docs/architecture.md) | System design and components |
 | [Configuration](docs/configuration.md) | All config options |
-| [Deployment](docs/deploy.md) | Production deployment (systemd / Docker) |
-| [IM Channels Reference](docs/im-channels.md) | IM channels technical reference (media matrix / architecture) |
+| [Deployment](docs/deploy.md) | Production deployment |
 | [MCP Integration](docs/mcp-integration.md) | Connecting external services |
 | [Skill System](docs/skills.md) | Creating and using skills |
 
@@ -287,7 +384,6 @@ Channels ─── CLI · Telegram · Feishu · WeCom · DingTalk · QQ Official
 - [ChineseBQB](https://github.com/zhaoolee/ChineseBQB) — 5700+ stickers that give AI a soul
 - [browser-use](https://github.com/browser-use/browser-use) — AI browser automation
 - [AGENTS.md](https://agentsmd.io/) / [Agent Skills](https://agentskills.io/) — Open standards
-- [ZeroMQ](https://zeromq.org/) — Multi-agent IPC
 
 ## License
 
@@ -308,5 +404,5 @@ Third-party licenses: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
 ---
 
 <p align="center">
-  <strong>OpenAkita — Self-Evolving AI Agent That Sends Memes, Learns Autonomously, Never Gives Up</strong>
+  <strong>OpenAkita — Open-Source Multi-Agent AI Assistant That Gets Things Done</strong>
 </p>

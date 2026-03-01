@@ -5,7 +5,7 @@
 <h1 align="center">OpenAkita</h1>
 
 <p align="center">
-  <strong>自进化 AI Agent — 自主学习，永不放弃</strong>
+  <strong>开源多 Agent AI 助手 — 不只是聊天，是帮你做事的 AI 团队</strong>
 </p>
 
 <p align="center">
@@ -17,10 +17,14 @@
 </p>
 
 <p align="center">
-  <a href="#桌面终端ai-助手--一站式管理">桌面终端</a> •
-  <a href="#核心特性">核心特性</a> •
-  <a href="#快速开始">快速开始</a> •
-  <a href="#架构">架构</a> •
+  多 Agent 协作 · 30+ 大模型 · 6 大 IM 平台 · 89+ 工具 · 全图形化零命令行
+</p>
+
+<p align="center">
+  <a href="#核心能力">核心能力</a> •
+  <a href="#5-分钟上手">5 分钟上手</a> •
+  <a href="#桌面应用">桌面应用</a> •
+  <a href="#多-agent-协作">多 Agent</a> •
   <a href="#文档">文档</a>
 </p>
 
@@ -32,147 +36,100 @@
 
 ## 什么是 OpenAkita？
 
-**一个你睡觉时还在变强的 AI Agent。**
+**别人的 AI 只能聊天，OpenAkita 帮你做事。**
 
-别的 AI 助手用完即走，OpenAkita 会自己学技能、自己修 bug、记住你说过的每句话——像秋田犬一样，**忠诚、可靠、永不言弃**。
+OpenAkita 是一款开源全能 AI 助手——多个 AI Agent 协作分工、自动上网搜索、操作你的电脑、管理文件、定时执行任务，还能接入飞书/钉钉/企微/Telegram/QQ 随时响应。它会记住你的偏好，会自己学新技能，遇到问题永不放弃。
 
-3 分钟装好，填个 API Key 就能用。支持 8 种人格、6 大 IM 平台，还会发表情包。
+**全图形化配置，5 分钟上手，全程不用敲一行命令。**
+
+> **下载**：[GitHub Releases](https://github.com/openakita/openakita/releases) — Windows / macOS / Linux
 
 ---
 
-## 桌面终端：AI 助手 + 一站式管理
-
-<p align="center">
-  <img src="docs/assets/desktop_terminal.png" alt="OpenAkita Desktop Terminal" width="800" />
-</p>
-
-OpenAkita 提供跨平台的 **桌面终端** 应用（基于 Tauri + React），集 AI 聊天、配置管理、状态监控于一体：
-
-- **AI 聊天助手** — 流式对话、Markdown 渲染、多模态输入、Thinking 展示、Plan 模式
-- **中英文双语** — 自动识别系统语言，一键切换，全面国际化
-- **中国本土化** — 国内 LLM 服务商一等支持、PyPI 镜像源、中文 IM 通道
-- **LLM 端点管理** — 多服务商、多端点、主备自动切换、在线拉取模型列表
-- **IM 通道配置** — Telegram、飞书、企业微信、钉钉、QQ 官方机器人、OneBot 一站式配置
-- **角色 & 活人感** — 8 种预设角色，主动问候、记忆回忆，越用越懂你
-- **技能市场** — 浏览、下载、配置技能，一站式管理
-- **状态监控** — 紧凑面板：服务/LLM/IM 健康状态一屏展示
-- **后台常驻** — 系统托盘 + 开机自启动，一键启动/停止
-
-> **下载安装包**：[GitHub Releases](https://github.com/openakita/openakita/releases)
->
-> 支持 Windows (.exe) / macOS (.dmg) / Linux (.deb / .AppImage)
-
-### 3 分钟快速配置 — 开箱即用
-
-不需要命令行，不需要改配置文件。**3 分钟从安装到对话**：
-
-<p align="center">
-  <img src="docs/assets/desktop_quick_config.gif" alt="OpenAkita 快速配置 vs 完整配置" width="800" />
-</p>
+## 核心能力
 
 <table>
-<tr>
-<td width="50%">
+<tr><td>
 
-**快速配置（推荐新手）**
+### 🤝 多 Agent 协作
+多个 AI 专业分工、并行处理、自动接力。
+一句话下去，技术 Agent 写代码、文案 Agent 写文档、测试 Agent 做验证——同时进行。
 
-```
-① 填写 → 添加 LLM 端点 + IM（可选）
-② 一键 → 自动创建环境、安装依赖、写入配置
-③ 完成 → 启动服务，开始对话
-```
+### 📋 计划模式
+复杂任务自动拆解为步骤计划，实时进度追踪，失败自动回退换方案。
 
-只需一个 API Key，其余全部自动完成：
-- 自动创建工作区
-- 自动下载安装 Python 3.11
-- 自动创建虚拟环境 + pip install
-- 自动写入 40+ 项推荐默认配置
-- 自动保存 IM 通道设置
+### 🧠 ReAct 推理引擎
+想 → 做 → 看，三阶段显式推理。支持检查点回滚，遇到问题换策略重来。
 
-</td>
-<td width="50%">
+### 🔧 89+ 工具 · 真的能做事
+上网搜索 · 操作电脑 · 读写文件 · 浏览器自动化 · 定时任务 · MCP 扩展 ……
 
-**完整配置（高级用户）**
+</td><td>
 
-```
-工作区 → Python → 安装 → LLM 端点
-→ IM 通道 → 工具技能 → Agent 系统 → 完成
-```
+### 🚀 5 分钟上手 · 零命令行
+双击安装 → 引导向导 → 填 API Key → 开始用。全图形化配置，不用碰终端。
 
-8 步引导式配置，精细控制每个环节：
-- 自定义工作区（支持多环境隔离）
-- 选择 Python 版本和安装源
-- 配置桌面自动化、MCP 工具
-- 调整人格角色、活人感参数
-- 日志、记忆、调度器等高级选项
+### 🌐 30+ 大模型自由选
+DeepSeek / 通义千问 / Kimi / Claude / GPT / Gemini …… 一个挂了自动切下一个。
 
-</td>
-</tr>
+### 💬 6 大 IM 平台
+Telegram / 飞书 / 企微 / 钉钉 / QQ / OneBot，在你常用的聊天工具里直接用。
+
+### 💾 长期记忆 · 越用越懂你
+三层记忆系统 + AI 提取，记住你的偏好、习惯、历史任务。
+
+</td></tr>
 </table>
 
-> 两种模式随时可切换——侧边栏点击「切换配置模式」即可返回选择页面，不会丢失已有配置。
->
-> 详细配置说明请参考 [配置指南](docs/configuration-guide.md)。
-
 ---
 
-## 核心特性
+## 全部特性一览
 
-| | 特性 | 一句话 |
+| | 特性 | 说明 |
 |:---:|------|------|
-| **1** | **自学习与自进化** | 每日自检修复、记忆整理、任务复盘，自动生成技能、安装依赖——睡一觉起来它又变强了 |
-| **2** | **8 种人格 + 活人感** | 女友 / 管家 / 贾维斯……不只是人设，会主动问候、记住你的生日、深夜自动静音 |
-| **3** | **3 分钟快速配置** | 桌面终端一键开箱，填个 API Key 就能聊，Python/环境/依赖/配置全自动 |
-| **4** | **Plan 模式** | 复杂任务自动拆解为多步计划，实时进度追踪，Plan → Act → Verify 循环到完成 |
-| **5** | **多 LLM 动态端点** | 9+ 服务商热插拔，优先级路由 + 自动故障转移，一个挂了无缝切下一个 |
-| **6** | **Skill + MCP 标准化** | 遵循 Agent Skills / MCP 开放标准，GitHub 一键装技能，生态即插即用 |
-| **7** | **7 大 IM 全覆盖** | Telegram / 飞书 / 企业微信 / 钉钉 / QQ 官方机器人 / OneBot / CLI，你在哪它就在哪 |
-| **8** | **会发表情包的 AI** | 可能是第一个会「斗图」的 AI Agent——5700+ 表情包，看心情发，按人格选（感谢 [ChineseBQB](https://github.com/zhaoolee/ChineseBQB)） |
+| 🤝 | **多 Agent 协作** | 多 Agent 专业分工、并行委派、自动接力、故障切换、可视化仪表盘实时追踪 |
+| 📋 | **计划模式** | 复杂任务自动拆步骤，每步独立追踪，前端进度条实时展示 |
+| 🧠 | **ReAct 推理** | 显式三阶段推理循环，检查点/回滚，循环检测，失败换策略 |
+| 🚀 | **零门槛上手** | 全图形化配置，Onboarding 引导向导，5 分钟安装到对话，零命令行 |
+| 🔧 | **89+ 内置工具** | 16 大类：Shell / 文件 / 浏览器 / 桌面自动化 / 搜索 / 定时任务 / MCP …… |
+| 🛒 | **技能市场** | 在线搜索一键安装，GitHub 直装，AI 现场生成新技能 |
+| 🌐 | **30+ LLM 服务商** | Anthropic / OpenAI / DeepSeek / 通义千问 / Kimi / MiniMax / Gemini …… 智能故障切换 |
+| 💬 | **6 大 IM 平台** | Telegram / 飞书 / 企微 / 钉钉 / QQ / OneBot，语音识别，群聊智能策略 |
+| 💾 | **三层记忆系统** | 工作记忆 + 核心记忆 + 动态检索，7 种记忆类型，AI 驱动提取与审查 |
+| 🎭 | **8 种人格** | 默认 / 技术专家 / 男友 / 女友 / Jarvis / 管家 / 商务 / 家庭，一句话切换 |
+| 🤖 | **活人感引擎** | 主动问候、任务跟进、闲聊关怀、晚安，反馈自适应调频 |
+| 🧬 | **自我进化** | 每日自检修复、失败根因分析、技能自动生成、依赖自修复 |
+| 🔍 | **深度思考** | 可控 thinking 模式，思维链实时展示，IM 推送 |
+| 🛡️ | **运行时监督** | 工具抖动检测、资源预算、策略引擎、确定性验证 |
+| 🔒 | **安全治理** | POLICIES.yaml 策略管理，高危操作需确认，数据本地存储 |
+| 🖥️ | **桌面应用** | Tauri 2.x 跨平台，11 个功能面板，深色主题，自动更新 |
+| 📊 | **可观测性** | 12 种追踪 Span，Token 全链路统计面板 |
+| 😄 | **表情包** | 5700+ 表情包，看心情发，按人格选 |
 
 ---
 
-## 它是怎么越来越聪明的？
-
-别的 AI 用完即走。OpenAkita **会自我进化**——你睡觉的时候，它在学习：
-
-```
-每天 03:00  →  整理记忆：语义去重、提取洞察、刷新 MEMORY.md
-每天 04:00  →  自检修复：分析错误日志 → LLM 诊断 → 自动修复 → 生成报告
-任务完成后  →  任务复盘：分析效率、提取经验、存入长期记忆
-遇到不会的  →  自动生成技能 + 安装依赖，下次就会了
-每轮对话    →  挖掘你的偏好和习惯，越用越懂你
-```
-
-> 举个例子：你让它写 Python，它发现缺了个库——自动 pip install；发现需要新工具——自动生成 Skill。第二天早上打开，它已经修好了昨天的 bug。
-
----
-
-## 推荐模型
-
-| 模型 | 厂商 | 一句话 |
-|------|------|------|
-| `claude-sonnet-4-5-*` | Anthropic | 默认推荐，性能均衡 |
-| `claude-opus-4-5-*` | Anthropic | 旗舰能力最强 |
-| `qwen3-max` | 阿里通义 | 国产首选，中文能力强 |
-| `deepseek-v3` | DeepSeek | 高性价比之选 |
-| `kimi-k2.5` | 月之暗面 | 超长上下文 |
-| `minimax-m2.1` | MiniMax | 对话创作出色 |
-
-> 复杂推理任务建议开启 Thinking 模式——模型名加 `-thinking` 后缀即可（如 `claude-opus-4-5-20251101-thinking`）。
-
----
-
-## 快速开始
+## 5 分钟上手
 
 ### 方式一：桌面客户端（推荐）
 
-最简单——下载安装、填个 API Key、点一下，就能用：
+**全图形化，不用敲命令行**——这是 OpenAkita 和同类开源产品最大的区别：
 
-1. 从 [GitHub Releases](https://github.com/openakita/openakita/releases) 下载安装包（Windows / macOS / Linux）
-2. 安装并打开 OpenAkita Desktop
-3. 选择 **快速配置** → 添加 LLM 端点 → 点击「开始配置」→ 全自动完成 → 开聊
+<p align="center">
+  <img src="docs/assets/desktop_quick_config.gif" alt="OpenAkita 快速配置" width="800" />
+</p>
 
-> 需要精细控制？选择 **完整配置**：工作区 → Python → 安装 → LLM → IM → 工具 → Agent → 完成
+| 步骤 | 操作 | 耗时 |
+|:----:|------|:----:|
+| 1 | 下载安装包，双击安装 | 1 分钟 |
+| 2 | 跟着引导向导走，填入 API Key | 2 分钟 |
+| 3 | 开始对话 | 立刻 |
+
+- 不需要安装 Python、不需要 git clone、不需要改配置文件
+- 环境自动隔离，不会弄乱你电脑上已有的软件
+- 中国用户自动切换国内镜像
+- 模型、IM、技能、定时任务——全部在图形界面配置
+
+> **下载**：[GitHub Releases](https://github.com/openakita/openakita/releases) — Windows (.exe) / macOS (.dmg) / Linux (.deb)
 
 ### 方式二：pip 安装
 
@@ -198,51 +155,192 @@ openakita init
 openakita                          # 交互式聊天
 openakita run "帮我写个计算器"       # 执行单个任务
 openakita serve                    # 服务模式（接入 IM）
+openakita serve --dev              # 开发模式，热加载
 openakita daemon start             # 后台守护进程
 openakita status                   # 查看运行状态
 ```
 
-### 最小配置
+---
 
-```bash
-# .env（只需要这两行就能跑）
-ANTHROPIC_API_KEY=your-api-key     # 或用 DASHSCOPE_API_KEY 等国内服务商
-TELEGRAM_BOT_TOKEN=your-bot-token  # 可选，接入 Telegram
+## 桌面应用
+
+<p align="center">
+  <img src="docs/assets/desktop_terminal.png" alt="OpenAkita 桌面应用" width="800" />
+</p>
+
+基于 **Tauri 2.x + React + TypeScript** 的跨平台桌面应用：
+
+| 面板 | 功能 |
+|------|------|
+| **Chat** | AI 聊天、流式输出、Thinking 展示、文件拖拽上传、图片灯箱 |
+| **Agent Dashboard** | 神经网络可视化仪表盘，多 Agent 状态实时追踪 |
+| **Agent Manager** | 多 Agent 创建、管理、技能配置 |
+| **IM Channels** | 6 大平台一站式配置 |
+| **Skills** | 技能市场搜索、安装、启用/禁用 |
+| **MCP** | MCP 服务器管理 |
+| **Memory** | 记忆管理 + LLM 审查清理 |
+| **Scheduler** | 定时任务管理 |
+| **Token Stats** | Token 用量统计 |
+| **Config** | LLM 端点、系统设置、高级选项 |
+| **Feedback** | Bug 反馈 + 需求建议 |
+
+深色/浅色主题 · Onboarding 向导 · 自动更新 · 中英双语 · 开机自启
+
+---
+
+## 多 Agent 协作
+
+OpenAkita 内置完整的多 Agent 协作系统——不是只有一个 AI，而是一个 **AI 团队**：
+
+```
+你："帮我做一份竞品分析报告"
+    │
+    ▼
+┌─────────────────────────────────┐
+│     AgentOrchestrator 总指挥     │
+│   自动拆解任务 → 分配给专业 Agent  │
+└───┬───────────┬─────────────┬───┘
+    ▼           ▼             ▼
+ 搜索 Agent   分析 Agent    写作 Agent
+ (上网搜资料)  (整理数据)    (撰写报告)
+    │           │             │
+    └───────────┴─────────────┘
+                ▼
+          汇总结果，交付给你
+```
+
+- **专业分工**：不同 Agent 擅长不同领域，自动匹配最合适的
+- **并行处理**：多个 Agent 同时工作，效率翻倍
+- **自动接力**：一个 Agent 搞不定，自动移交给更合适的
+- **故障切换**：Agent 失败时自动切换到备用方案
+- **深度控制**：最大 5 层委派深度，防止递归失控
+- **可视化追踪**：Agent Dashboard 实时展示每个 Agent 的工作状态
+
+---
+
+## 30+ LLM 服务商
+
+**不锁定任何厂商，自由选择和组合：**
+
+| 类别 | 服务商 |
+|------|--------|
+| **本地** | Ollama · LM Studio |
+| **国际** | Anthropic · OpenAI · Google Gemini · xAI (Grok) · Mistral · OpenRouter · NVIDIA NIM · Groq · Together AI · Fireworks · Cohere |
+| **中国区** | 阿里云 DashScope · Kimi（月之暗面）· MiniMax · DeepSeek · 硅基流动 · 火山引擎 · 智谱 AI · 百度千帆 · 腾讯混元 · 云雾 API · 美团 LongCat · 心流 iFlow |
+
+**7 大能力维度**：文本 · 图片理解 · 视频理解 · 工具调用 · 深度思考 · 音频理解 · PDF 原生输入
+
+**智能故障切换**：某个模型挂了自动切到下一个，你甚至感觉不到。
+
+### 推荐模型
+
+| 模型 | 厂商 | 推荐理由 |
+|------|------|----------|
+| `claude-sonnet-4-5-*` | Anthropic | 默认推荐，性能均衡 |
+| `claude-opus-4-5-*` | Anthropic | 旗舰能力最强 |
+| `qwen3-max` | 阿里通义 | 国产首选，中文能力强 |
+| `deepseek-v3` | DeepSeek | 高性价比之选 |
+| `kimi-k2.5` | 月之暗面 | 超长上下文 |
+| `minimax-m2.1` | MiniMax | 对话创作出色 |
+
+> 复杂推理任务建议开启 Thinking 模式——模型名加 `-thinking` 后缀即可。
+
+---
+
+## 6 大 IM 平台
+
+在你日常用的聊天工具里直接和 AI 对话：
+
+| 平台 | 接入方式 | 亮点 |
+|------|----------|------|
+| **Telegram** | Webhook / Long Polling | 配对验证、Markdown、代理支持 |
+| **飞书** | WebSocket / Webhook | 卡片消息、事件订阅 |
+| **企业微信** | 智能机器人回调 | 流式回复、主动推送 |
+| **钉钉** | Stream WebSocket | 无需公网 IP |
+| **QQ 官方** | WebSocket / Webhook | 群聊、单聊、频道 |
+| **OneBot** | WebSocket 正向连接 | 兼容 NapCat / Lagrange / go-cqhttp |
+
+- 📷 **图片理解**：发截图/照片，AI 看得懂
+- 🎤 **语音识别**：发语音消息，自动转文字处理
+- 📎 **文件交付**：AI 生成的文件直接推送到聊天
+- 👥 **群聊策略**：@它就回复，不@就安静围观
+- 💭 **思维链推送**：实时展示 AI 推理过程
+
+---
+
+## 记忆系统
+
+不是普通的"上下文窗口"，而是真正的长期记忆：
+
+- **三层架构**：工作记忆（当前任务）+ 核心记忆（用户画像）+ 动态检索（历史经验）
+- **7 种记忆类型**：事实 / 偏好 / 技能 / 错误经验 / 规则 / 性格特征 / 任务经验
+- **AI 驱动提取**：每次对话结束自动提炼有价值的信息
+- **多路召回**：语义搜索 + 全文检索 + 时间搜索 + 附件搜索
+- **越用越懂你**：两个月前说的偏好，今天还记得
+
+---
+
+## 自我进化
+
+OpenAkita 会自己变强：
+
+```
+每天 04:00  →  自检：分析错误日志 → AI 诊断 → 自动修复 → 推送报告
+任务失败后  →  分析根因（上下文丢失/工具限制/循环检测/预算耗尽）→ 生成改进建议
+缺少能力时  →  自动搜索 GitHub 安装技能，或 AI 现场生成
+缺少依赖时  →  自动 pip install，国内自动切镜像
+每轮对话    →  提取偏好和经验，存入长期记忆
 ```
 
 ---
 
-## 中国本土化
+## 安全与治理
 
-OpenAkita **生于中国，服务全球**——国内用户开箱即用：
-
-- **国内 LLM 服务商** — 通义千问 / Kimi / DeepSeek / MiniMax / 硅基流动 / 火山引擎，直接可用
-- **国内镜像加速** — 内置清华 TUNA、阿里云 PyPI 源，pip install 不再龟速
-- **中文 IM 通道** — 飞书 / 企业微信 / 钉钉 / QQ 官方机器人 / OneBot 原生支持
-- **中英双语界面** — 自动识别系统语言，一键切换
+- **策略引擎**：POLICIES.yaml 管理工具权限，Shell 命令黑名单，路径限制
+- **操作确认**：高危操作（删文件、执行系统命令）需用户确认
+- **资源预算**：Token / 成本 / 时长 / 迭代 / 工具调用 五维限制
+- **运行时监督**：自动检测工具抖动、推理死循环、Token 异常
+- **数据本地**：记忆、配置、对话全部存在你自己的电脑上
+- **开源透明**：Apache 2.0，代码完全公开
 
 ---
 
 ## 架构
 
 ```
-桌面终端 (Tauri + React)
+桌面应用 (Tauri + React)
     │
-身份层 ─── SOUL.md · AGENT.md · USER.md · MEMORY.md · 8 种人格预设
+身份层 ─── SOUL.md · AGENT.md · POLICIES.yaml · 8 种人格预设
     │
-核心层 ─── Brain(LLM) · Memory(向量记忆) · Ralph(永不放弃循环)
-    │      Prompt Compiler · PersonaManager · ProactiveEngine
+核心层 ─── ReasoningEngine(ReAct) · Brain(LLM) · ContextManager
+    │      PromptAssembler · RuntimeSupervisor · ResourceBudget
     │
-工具层 ─── Shell · File · Web · Browser · Desktop · MCP · Skills
-    │      Scheduler · Plan · Sticker · Persona
+Agent 层── AgentOrchestrator(协调) · AgentInstancePool(池化)
+    │      AgentFactory · FallbackResolver(故障切换)
     │
-进化层 ─── SelfCheck(自检) · Generator(技能生成) · Installer(依赖安装)
-    │      LogAnalyzer · DailyConsolidator(记忆整理)
+记忆层 ─── UnifiedStore(SQLite+向量) · RetrievalEngine(多路召回)
+    │      MemoryExtractor · MemoryConsolidator
     │
-通道层 ─── CLI · Telegram · 飞书 · 企业微信 · 钉钉 · QQ官方 · OneBot
+工具层 ─── Shell · File · Browser · Desktop · Web · MCP · Skills
+    │      Plan · Scheduler · Sticker · Persona · Agent 委派
+    │
+进化层 ─── SelfCheck · FailureAnalyzer · SkillGenerator · Installer
+    │
+通道层 ─── CLI · Telegram · 飞书 · 企微 · 钉钉 · QQ · OneBot
+    │
+追踪层 ─── AgentTracer(12种Span) · DecisionTrace · TokenStats
 ```
 
-> 详细架构设计请参考 [架构文档](docs/architecture.md)。
+---
+
+## 中国本土化
+
+OpenAkita 对国内用户做了全面优化：
+
+- **国内 LLM 服务商** — 通义千问 / Kimi / DeepSeek / MiniMax / 硅基流动 / 火山引擎 / 智谱 / 百度千帆 / 腾讯混元
+- **国内镜像加速** — pip / HuggingFace 自动切换国内源
+- **中文 IM 通道** — 飞书 / 企微 / 钉钉 / QQ 官方机器人 / OneBot
+- **中英双语界面** — 自动识别系统语言，一键切换
 
 ---
 
@@ -250,14 +348,13 @@ OpenAkita **生于中国，服务全球**——国内用户开箱即用：
 
 | 文档 | 内容 |
 |------|------|
-| [配置指南](docs/configuration-guide.md) | 桌面端快速配置 & 完整配置图文教程 |
-| ⭐ [LLM 服务商配置教程](docs/llm-provider-setup-tutorial.md) | **各大 LLM 服务商 API Key 申请 + 端点配置 + 多端点 Failover** |
-| ⭐ [IM 通道配置教程](docs/im-channel-setup-tutorial.md) | **Telegram / 飞书 / 钉钉 / 企业微信 / QQ 官方机器人 / OneBot 完整接入教程** |
+| [配置指南](docs/configuration-guide.md) | 桌面端快速配置 & 完整配置教程 |
+| ⭐ [LLM 服务商配置](docs/llm-provider-setup-tutorial.md) | **各大 LLM 服务商 API Key 申请 + 端点配置 + Failover** |
+| ⭐ [IM 通道配置](docs/im-channel-setup-tutorial.md) | **Telegram / 飞书 / 钉钉 / 企微 / QQ / OneBot 接入教程** |
 | [快速开始](docs/getting-started.md) | 安装和入门 |
 | [架构设计](docs/architecture.md) | 系统设计和组件 |
 | [配置说明](docs/configuration.md) | 全部配置选项 |
-| [部署指南](docs/deploy.md) | 生产环境部署（systemd / Docker） |
-| [IM 通道集成指南](docs/im-channels.md) | IM 通道技术参考（媒体矩阵 / 架构） |
+| [部署指南](docs/deploy.md) | 生产环境部署 |
 | [MCP 集成](docs/mcp-integration.md) | 连接外部服务 |
 | [技能系统](docs/skills.md) | 创建和使用技能 |
 
@@ -295,16 +392,15 @@ OpenAkita **生于中国，服务全球**——国内用户开箱即用：
 
 - [Anthropic Claude](https://www.anthropic.com/claude) — 核心 LLM 引擎
 - [Tauri](https://tauri.app/) — 桌面终端跨平台框架
-- [ChineseBQB](https://github.com/zhaoolee/ChineseBQB) — 5700+ 中文表情包，让 AI 有了灵魂
+- [ChineseBQB](https://github.com/zhaoolee/ChineseBQB) — 5700+ 中文表情包
 - [browser-use](https://github.com/browser-use/browser-use) — AI 浏览器自动化
 - [AGENTS.md](https://agentsmd.io/) / [Agent Skills](https://agentskills.io/) — 开放标准
-- [ZeroMQ](https://zeromq.org/) — 多 Agent 进程间通信
 
 ## 许可证
 
 Apache License 2.0 — 详见 [LICENSE](LICENSE)
 
-第三方许可证详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+第三方许可证详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
 
 ## Star History
 
@@ -319,5 +415,5 @@ Apache License 2.0 — 详见 [LICENSE](LICENSE)
 ---
 
 <p align="center">
-  <strong>OpenAkita — 自进化 AI Agent，会斗图、会学习、永不放弃</strong>
+  <strong>OpenAkita — 开源多 Agent AI 助手，不只是聊天，是帮你做事的 AI 团队</strong>
 </p>
