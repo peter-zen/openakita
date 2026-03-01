@@ -448,6 +448,7 @@ class Agent:
         # Handler Registry（模块化工具执行）
         self.handler_registry = SystemHandlerRegistry()
         self._init_handlers()
+        self._core_tool_names: set[str] = set(self.handler_registry.list_tools())
 
         # === 工具并行执行基础设施（默认不开启并行，tool_max_parallel=1）===
         # 并行执行只影响“同一轮模型返回多个 tool_use/tool_calls”的工具批处理阶段。
@@ -1140,7 +1141,7 @@ class Agent:
             self.handler_registry.map_tool_to_handler(tool_name, handler_name)
             logger.info(f"Mapped skill tool: {tool_name} -> {handler_name}")
 
-        stale = self._skill_tool_names - current_skill_tools
+        stale = self._skill_tool_names - current_skill_tools - self._core_tool_names
         for tool_name in stale:
             if self.handler_registry.unmap_tool(tool_name):
                 logger.info(f"Unmapped stale skill tool: {tool_name}")
