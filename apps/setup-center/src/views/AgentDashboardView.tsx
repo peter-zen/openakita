@@ -202,6 +202,7 @@ export function AgentDashboardView({
   const sizeRef = useRef({ w: 800, h: 500 });
   const breathRef = useRef(0);
   const lastPulseRef = useRef<Map<string, number>>(new Map());
+  const dragRef = useRef<{ nodeId: string; offsetX: number; offsetY: number; moved: boolean } | null>(null);
 
   const [topoData, setTopoData] = useState<TopoData | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -506,18 +507,26 @@ export function AgentDashboardView({
       }
 
       // damping + position update
+      const dragId = dragRef.current?.nodeId;
       for (const n of nodes) {
-        const isDormant = n.status === "dormant";
-        n.vx *= isDormant ? 0.96 : 0.88;
-        n.vy *= isDormant ? 0.96 : 0.88;
-        if (!isDormant) {
-          n.vx += (Math.random() - 0.5) * 0.04;
-          n.vy += (Math.random() - 0.5) * 0.04;
+        if (n.id === dragId) {
+          n.vx = 0;
+          n.vy = 0;
+          n.x = Math.max(PAD, Math.min(W - PAD, n.x));
+          n.y = Math.max(PAD, Math.min(H - PAD, n.y));
+        } else {
+          const isDormant = n.status === "dormant";
+          n.vx *= isDormant ? 0.96 : 0.88;
+          n.vy *= isDormant ? 0.96 : 0.88;
+          if (!isDormant) {
+            n.vx += (Math.random() - 0.5) * 0.04;
+            n.vy += (Math.random() - 0.5) * 0.04;
+          }
+          n.x += n.vx;
+          n.y += n.vy;
+          n.x = Math.max(PAD, Math.min(W - PAD, n.x));
+          n.y = Math.max(PAD, Math.min(H - PAD, n.y));
         }
-        n.x += n.vx;
-        n.y += n.vy;
-        n.x = Math.max(PAD, Math.min(W - PAD, n.x));
-        n.y = Math.max(PAD, Math.min(H - PAD, n.y));
 
         // animate radius + opacity (birth/death)
         const age = t - n.birthT;
@@ -807,11 +816,13 @@ export function AgentDashboardView({
             : 1;
         const drawR = n.r * pulse;
 
-        // outer glow ring (only for running or hovered)
-        if (isRunning) {
-          const gR = drawR + 12;
+        // outer glow ring (running or being dragged)
+        const isDragging = n.id === dragId;
+        if (isRunning || isDragging) {
+          const gR = drawR + (isDragging ? 18 : 12);
+          const gAlpha = isDragging ? 0.5 : 0.35;
           const g = ctx.createRadialGradient(n.x, n.y, drawR, n.x, n.y, gR);
-          g.addColorStop(0, `rgba(${cr},${cg},${cb},${n.opacity * 0.35})`);
+          g.addColorStop(0, `rgba(${cr},${cg},${cb},${n.opacity * gAlpha})`);
           g.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
           ctx.beginPath();
           ctx.arc(n.x, n.y, gR, 0, Math.PI * 2);
@@ -999,6 +1010,107 @@ export function AgentDashboardView({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // ── Node drag interaction ──────────────────────────────────────
+
+  const getMousePos = useCallback((e: MouseEvent): { x: number; y: number } => {
+    const c = containerRef.current;
+    if (!c) return { x: 0, y: 0 };
+    const rect = c.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }, []);
+
+  const findNodeAt = useCallback((mx: number, my: number): SimNode | null => {
+    const nodes = Array.from(simNodesRef.current.values());
+    for (let i = nodes.length - 1; i >= 0; i--) {
+      const n = nodes[i];
+      if (n.opacity <= 0 || n.r <= 0) continue;
+      const dx = mx - n.x, dy = my - n.y;
+      if (dx * dx + dy * dy <= (n.r + 8) * (n.r + 8)) return n;
+    }
+    return null;
+  }, []);
+
+  useEffect(() => {
+    const cvs = canvasRef.current;
+    if (!cvs) return;
+
+    const startDrag = (nodeId: string, mx: number, my: number) => {
+      const node = simNodesRef.current.get(nodeId);
+      if (!node) return;
+      dragRef.current = { nodeId, offsetX: mx - node.x, offsetY: my - node.y, moved: false };
+      node.vx = 0;
+      node.vy = 0;
+    };
+
+    const onDown = (e: MouseEvent) => {
+      const pos = getMousePos(e);
+      const hit = findNodeAt(pos.x, pos.y);
+      if (hit) {
+        startDrag(hit.id, pos.x, pos.y);
+        cvs.style.cursor = "grabbing";
+        e.preventDefault();
+      }
+    };
+
+    const onMove = (e: MouseEvent) => {
+      const drag = dragRef.current;
+      if (drag) {
+        const pos = getMousePos(e);
+        const node = simNodesRef.current.get(drag.nodeId);
+        if (node) {
+          node.x = pos.x - drag.offsetX;
+          node.y = pos.y - drag.offsetY;
+          node.vx = 0;
+          node.vy = 0;
+          drag.moved = true;
+        }
+        const container = containerRef.current;
+        if (container) container.style.cursor = "grabbing";
+      } else {
+        const pos = getMousePos(e);
+        const hit = findNodeAt(pos.x, pos.y);
+        cvs.style.cursor = hit ? "grab" : "";
+      }
+    };
+
+    const onUp = () => {
+      if (dragRef.current) {
+        const node = simNodesRef.current.get(dragRef.current.nodeId);
+        if (node) {
+          node.ripples.push({ t: now(), maxR: 40 });
+        }
+        dragRef.current = null;
+        cvs.style.cursor = "";
+        const container = containerRef.current;
+        if (container) container.style.cursor = "";
+      }
+    };
+
+    const onLabelDown = (e: MouseEvent) => {
+      const target = (e.target as HTMLElement).closest(".neural-label");
+      if (!target) return;
+      const idx = Array.from(target.parentElement!.children).indexOf(target);
+      const nodes = Array.from(simNodesRef.current.values()).filter((n) => n.opacity > 0 && n.r > 0);
+      const node = nodes[idx];
+      if (!node) return;
+      const pos = getMousePos(e);
+      startDrag(node.id, pos.x, pos.y);
+      e.preventDefault();
+    };
+
+    const overlay = overlayRef.current;
+    cvs.addEventListener("mousedown", onDown);
+    overlay?.addEventListener("mousedown", onLabelDown);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      cvs.removeEventListener("mousedown", onDown);
+      overlay?.removeEventListener("mousedown", onLabelDown);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [getMousePos, findNodeAt]);
+
   // ── Visible nodes for overlay ─────────────────────────────────
 
   const visibleNodes = useMemo(() => {
@@ -1038,7 +1150,7 @@ export function AgentDashboardView({
             style={{ "--nc": n.color } as React.CSSProperties}
             onMouseEnter={() => setHovered(n.id)}
             onMouseLeave={() => setHovered(null)}
-            onClick={(e) => { e.stopPropagation(); setSelected(n.id === selected ? null : n.id); }}
+            onClick={(e) => { e.stopPropagation(); if (dragRef.current?.moved) return; setSelected(n.id === selected ? null : n.id); }}
           >
             <span className="neural-name">{n.name}</span>
             {n.status === "running" && (
@@ -1178,7 +1290,7 @@ function NeuralStyles() {
         position: absolute;
         left: 0; top: 0;
         pointer-events: all;
-        cursor: pointer;
+        cursor: grab;
         display: flex;
         align-items: center;
         gap: 5px;
