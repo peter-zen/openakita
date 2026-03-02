@@ -2529,8 +2529,13 @@ export function ChatView({
         setMessages((prev) => prev.map((m) =>
           m.id === assistantMsg.id ? { ...m, streaming: false } : m
         ));
-        // 兜底对账：若本轮未收到文本增量，但后端已完成回复，则立刻从 history 回填本条助手消息
-        if (gracefulDone && !currentContent.trim() && convId) {
+        // 兜底对账：若 SSE 流正常完成却未交付任何有效响应，从 session history 回填。
+        // 注意：ask_user / 纯工具执行等结构化响应设计上不产生 text_delta，
+        // 需同时检查所有响应载体，避免将"无文本的正常响应"误判为"流失败"。
+        const streamDeliveredPayload = !!(
+          currentContent.trim() || currentAsk || currentToolCalls.length > 0
+        );
+        if (gracefulDone && !streamDeliveredPayload && convId) {
           fetch(`${apiBase}/api/sessions/${encodeURIComponent(convId)}/history`)
             .then((r) => (r.ok ? r.json() : null))
             .then((data) => {
