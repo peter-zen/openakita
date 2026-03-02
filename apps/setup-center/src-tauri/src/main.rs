@@ -3284,10 +3284,6 @@ fn export_python_diagnostic_report(venv_dir: String) -> Result<String, String> {
     Ok(report_path.to_string_lossy().to_string())
 }
 
-fn runtime_dir() -> PathBuf {
-    openakita_root_dir().join("runtime")
-}
-
 /// 校验并返回安装包内置 Python（不再运行时下载 Python）。
 fn install_bundled_python_sync(
     _python_series: Option<String>,
