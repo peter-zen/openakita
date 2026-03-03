@@ -2173,8 +2173,24 @@ fn main() {
             unregister_cli,
             get_cli_status
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app_handle, event| {
+            if let tauri::RunEvent::Exit = event {
+                // Safety-net: clean up backend processes on ANY exit path
+                // (SIGTERM, system shutdown, unexpected termination, etc.)
+                // Idempotent — harmless if tray-quit already stopped everything.
+                let entries = list_service_pids();
+                for ent in &entries {
+                    if ent.started_by == "external" {
+                        continue;
+                    }
+                    let port = read_workspace_api_port(&ent.workspace_id);
+                    let _ = stop_service_pid_entry(ent, port);
+                }
+                kill_openakita_orphans();
+            }
+        });
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
