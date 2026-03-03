@@ -716,7 +716,7 @@ function SearchSelect({
         {hasOptions && (value || search) && !disabled && (
           <button
             type="button"
-            className="btnSmall"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
               setSearch("");
               onChange("");
@@ -725,18 +725,20 @@ function SearchSelect({
             }}
             style={{
               position: "absolute",
-              right: 42,
+              right: 36,
               top: "50%",
               transform: "translateY(-50%)",
-              width: 26,
-              height: 26,
+              width: 24,
+              height: 24,
               padding: 0,
-              borderRadius: 8,
+              border: "none",
+              background: "transparent",
               display: "grid",
               placeItems: "center",
-              fontSize: 14,
+              fontSize: 13,
               color: "var(--muted)",
-              opacity: 0.7,
+              cursor: "pointer",
+              opacity: 0.5,
             }}
             title="清空"
           >
@@ -747,7 +749,7 @@ function SearchSelect({
         {hasOptions && (
           <button
             type="button"
-            className="btnSmall"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => {
               if (!open) { setSearch(""); }
               setOpen((v) => !v);
@@ -756,15 +758,19 @@ function SearchSelect({
             disabled={disabled}
             style={{
               position: "absolute",
-              right: 8,
+              right: 6,
               top: "50%",
               transform: "translateY(-50%)",
-              width: 34,
-              height: 30,
+              width: 28,
+              height: 28,
               padding: 0,
-              borderRadius: 10,
+              border: "none",
+              background: "transparent",
               display: "grid",
               placeItems: "center",
+              fontSize: 15,
+              color: "var(--muted)",
+              cursor: "pointer",
             }}
           >
             ▾
@@ -918,11 +924,11 @@ function ProviderSearchSelect({
             }
           }}
           disabled={disabled}
-          style={{ paddingRight: 44, width: "100%", padding: "8px 44px 8px 10px", borderRadius: 8, border: "1px solid var(--line)", fontSize: 13 }}
+          style={{ width: "100%", padding: "8px 38px 8px 10px", borderRadius: 8, border: "1px solid var(--line)", fontSize: 13 }}
         />
         <button
           type="button"
-          className="btnSmall"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => {
             if (!open) { setSearch(""); }
             setOpen((v) => !v);
@@ -931,15 +937,19 @@ function ProviderSearchSelect({
           disabled={disabled}
           style={{
             position: "absolute",
-            right: 8,
+            right: 6,
             top: "50%",
             transform: "translateY(-50%)",
-            width: 34,
-            height: 30,
+            width: 28,
+            height: 28,
             padding: 0,
-            borderRadius: 10,
+            border: "none",
+            background: "transparent",
             display: "grid",
             placeItems: "center",
+            fontSize: 15,
+            color: "var(--muted)",
+            cursor: "pointer",
           }}
         >
           ▾

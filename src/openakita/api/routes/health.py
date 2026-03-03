@@ -125,8 +125,8 @@ async def diagnostics():
 
     # C2: pip availability
     try:
-        from importlib.metadata import version as pkg_version
-        pip_ver = pkg_version("pip")
+        import pip
+        pip_ver = pip.__version__
         checks.append({
             "id": "C2_PIP",
             "title": "包管理器",
