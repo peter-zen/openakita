@@ -45,6 +45,7 @@ class ExternalSkillRef:
     """Reference to a third-party skill fetched from its original source at install time."""
     id: str
     source: str  # e.g. "owner/repo@skill-name"
+    version: str = ""
     license: str = "unknown"
     url: str = ""
     required: bool = True
@@ -57,6 +58,7 @@ class ExternalSkillRef:
         return cls(
             id=data.get("id", ""),
             source=data.get("source", ""),
+            version=data.get("version", ""),
             license=data.get("license", "unknown"),
             url=data.get("url", ""),
             required=data.get("required", True),

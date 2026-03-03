@@ -129,14 +129,27 @@ class SkillStoreHandler:
                 f"install_url: {install_url}"
             )
 
+        self._try_reload_skills()
+
         skill_name = skill.get("name", skill_id)
         return (
             f"✅ Skill 从 Store 安装成功！\n\n"
             f"📦 名称: {skill_name}\n"
             f"📂 路径: {skill_dir}\n"
             f"🏷️ 信任等级: {skill.get('trustLevel', 'community')}\n\n"
-            f"Skill 已安装到本地，可以使用 `load_skill` 加载或在 Agent 中引用。"
+            f"Skill 已安装到本地并自动加载。"
         )
+
+    def _try_reload_skills(self) -> None:
+        """Best-effort reload of skills after installation."""
+        try:
+            loader = getattr(self.agent, "skill_loader", None)
+            if loader:
+                from ...config import settings
+                loader.load_all(settings.project_root)
+                logger.info("Skills reloaded after Store install")
+        except Exception as e:
+            logger.warning(f"Skill reload after Store install failed (non-blocking): {e}")
 
     async def _get_detail(self, params: dict[str, Any]) -> str:
         skill_id = params.get("skill_id", "")

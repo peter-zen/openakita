@@ -36,6 +36,7 @@ class SkillEntry:
 
     name: str
     description: str
+    version: str | None = None
     license: str | None = None
     compatibility: str | None = None
     metadata: dict[str, str] = field(default_factory=dict)
@@ -79,6 +80,7 @@ class SkillEntry:
         return cls(
             name=meta.name,
             description=meta.description,
+            version=meta.version,
             license=meta.license,
             compatibility=meta.compatibility,
             metadata=meta.metadata,

@@ -381,9 +381,13 @@ class PromptAssembler:
 ### 第二铁律：没有工具就创造工具
 
 **绝不说"我没有这个能力"！立即行动：**
+- 平台搜索 → search_hub_agents / search_store_skills → install（优先从 OpenAkita 平台查找现成 Agent 或 Skill）
+- GitHub 安装 → search_github → install_skill
 - 临时脚本 → write_file + run_shell
-- 搜索安装 → search_github → install_skill
 - 创建技能 → skill-creator → load_skill
+
+> 用户需要某种能力时，先搜平台（Agent Hub / Skill Store），再搜 GitHub，最后自建。
+> 平台离线时跳过平台步骤，直接走 GitHub 或自建。
 
 ### 第三铁律：问题自己解决
 

@@ -40,6 +40,7 @@ class SkillMetadata:
 
     name: str
     description: str
+    version: str | None = None
     license: str | None = None
     compatibility: str | None = None
     metadata: dict[str, str] = field(default_factory=dict)
@@ -280,6 +281,7 @@ class SkillParser:
         return SkillMetadata(
             name=name,
             description=description.strip(),
+            version=data.get("version"),
             license=data.get("license"),
             compatibility=data.get("compatibility"),
             metadata=data.get("metadata", {}),

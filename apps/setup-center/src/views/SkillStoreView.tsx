@@ -14,6 +14,7 @@ interface Skill {
   version?: string;
   githubStars?: number;
   sourceRepo?: string;
+  license?: string;
 }
 
 interface SkillStoreViewProps {
@@ -40,6 +41,7 @@ export function SkillStoreView({ apiBaseUrl, visible }: SkillStoreViewProps) {
   const [total, setTotal] = useState(0);
   const [installing, setInstalling] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  const [confirmSkill, setConfirmSkill] = useState<Skill | null>(null);
 
   const fetchSkills = useCallback(async () => {
     setLoading(true);
@@ -66,7 +68,7 @@ export function SkillStoreView({ apiBaseUrl, visible }: SkillStoreViewProps) {
     if (visible) fetchSkills();
   }, [visible, fetchSkills]);
 
-  const handleInstall = async (skillId: string) => {
+  const doInstall = async (skillId: string) => {
     setInstalling(skillId);
     setNotice("");
     try {
@@ -76,9 +78,10 @@ export function SkillStoreView({ apiBaseUrl, visible }: SkillStoreViewProps) {
         throw new Error(body.detail || `HTTP ${resp.status}`);
       }
       const data = await resp.json();
-      setNotice(`✅ ${data.skill_name || skillId} 安装成功！`);
+      setNotice(t("skillStore.installSuccess", { name: data.skill_name || skillId }));
+      fetch(`${apiBaseUrl}/api/skills/reload`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(() => {});
     } catch (e: any) {
-      setNotice(`❌ 安装失败: ${e.message}`);
+      setNotice(t("skillStore.installFail", { msg: e.message }));
     } finally {
       setInstalling(null);
     }
@@ -178,12 +181,20 @@ export function SkillStoreView({ apiBaseUrl, visible }: SkillStoreViewProps) {
               <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8, lineHeight: 1.5 }}>
                 {s.description?.slice(0, 120) || "暂无描述"}
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
-                <span>📥 {s.installCount}</span>
-                {s.avgRating != null && s.avgRating > 0 && <span>⭐ {s.avgRating.toFixed(1)}</span>}
-                {s.githubStars != null && s.githubStars > 0 && <span>★ {s.githubStars}</span>}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 12, color: "var(--muted)", marginBottom: 8, flexWrap: "wrap" }}>
+                <span>{t("skillStore.installs", { count: s.installCount })}</span>
+                {s.avgRating != null && s.avgRating > 0 && <span>{s.avgRating.toFixed(1)}</span>}
+                {s.githubStars != null && s.githubStars > 0 && <span>{s.githubStars} stars</span>}
                 {s.version && <span>v{s.version}</span>}
                 {s.authorName && <span>by {s.authorName}</span>}
+                {s.license && (
+                  <span style={{
+                    fontSize: 10, padding: "1px 5px", borderRadius: 3,
+                    background: "rgba(139,92,246,0.1)", color: "#7c3aed", fontWeight: 500,
+                  }}>
+                    {s.license}
+                  </span>
+                )}
               </div>
               {s.sourceRepo && (
                 <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 8 }}>
@@ -198,11 +209,11 @@ export function SkillStoreView({ apiBaseUrl, visible }: SkillStoreViewProps) {
                 </div>
               )}
               <button
-                onClick={() => handleInstall(s.id)}
+                onClick={() => setConfirmSkill(s)}
                 disabled={installing === s.id}
                 style={{ width: "100%", marginTop: 4 }}
               >
-                {installing === s.id ? "安装中..." : "安装"}
+                {installing === s.id ? t("skillStore.installing") : t("skillStore.install")}
               </button>
             </div>
           );
@@ -211,11 +222,61 @@ export function SkillStoreView({ apiBaseUrl, visible }: SkillStoreViewProps) {
 
       {total > 20 && (
         <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 16 }}>
-          <button disabled={page <= 1} onClick={() => setPage(page - 1)}>上一页</button>
+          <button disabled={page <= 1} onClick={() => setPage(page - 1)}>{t("common.prevPage")}</button>
           <span style={{ fontSize: 13, color: "var(--muted)", lineHeight: "32px" }}>
-            第 {page} 页 / 共 {Math.ceil(total / 20)} 页
+            {t("common.pageInfo", { page, total: Math.ceil(total / 20) })}
           </span>
-          <button disabled={page * 20 >= total} onClick={() => setPage(page + 1)}>下一页</button>
+          <button disabled={page * 20 >= total} onClick={() => setPage(page + 1)}>{t("common.nextPage")}</button>
+        </div>
+      )}
+
+      {confirmSkill && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 9999,
+            background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+          onClick={() => setConfirmSkill(null)}
+        >
+          <div
+            className="card"
+            style={{ maxWidth: 420, width: "90%", padding: 24 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: "0 0 12px", fontSize: 16 }}>{t("skillStore.confirmTitle")}</h3>
+            <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, margin: "0 0 8px" }}>
+              {t("skillStore.confirmDesc", { name: confirmSkill.name })}
+            </p>
+            {confirmSkill.license && (
+              <p style={{ fontSize: 12, margin: "0 0 4px" }}>
+                <span style={{ fontWeight: 500 }}>{t("skillStore.license")}:</span>{" "}
+                <span style={{ padding: "1px 5px", borderRadius: 3, background: "rgba(139,92,246,0.1)", color: "#7c3aed" }}>
+                  {confirmSkill.license}
+                </span>
+              </p>
+            )}
+            {confirmSkill.sourceRepo && (
+              <p style={{ fontSize: 12, margin: "0 0 4px" }}>
+                <span style={{ fontWeight: 500 }}>{t("skillStore.source")}:</span>{" "}
+                <a href={`https://github.com/${confirmSkill.sourceRepo}`} target="_blank" rel="noopener noreferrer"
+                  style={{ color: "var(--accent, #5B8DEF)" }}>
+                  {confirmSkill.sourceRepo}
+                </a>
+              </p>
+            )}
+            <p style={{ fontSize: 11, color: "var(--muted)", margin: "8px 0 16px", lineHeight: 1.5 }}>
+              {t("skillStore.licenseNotice")}
+            </p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button onClick={() => setConfirmSkill(null)}>{t("common.cancel")}</button>
+              <button
+                className="btnPrimary"
+                onClick={() => { const id = confirmSkill.id; setConfirmSkill(null); doInstall(id); }}
+              >
+                {t("skillStore.confirmInstall")}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

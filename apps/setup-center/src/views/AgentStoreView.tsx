@@ -13,6 +13,7 @@ interface Agent {
   latestVersion?: string;
   tags?: string[];
   isFeatured?: boolean;
+  license?: string;
 }
 
 interface AgentStoreViewProps {
@@ -32,6 +33,7 @@ export function AgentStoreView({ apiBaseUrl, visible }: AgentStoreViewProps) {
   const [total, setTotal] = useState(0);
   const [installing, setInstalling] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  const [confirmAgent, setConfirmAgent] = useState<Agent | null>(null);
 
   const fetchAgents = useCallback(async () => {
     setLoading(true);
@@ -57,7 +59,7 @@ export function AgentStoreView({ apiBaseUrl, visible }: AgentStoreViewProps) {
     if (visible) fetchAgents();
   }, [visible, fetchAgents]);
 
-  const handleInstall = async (agentId: string) => {
+  const doInstall = async (agentId: string) => {
     setInstalling(agentId);
     setNotice("");
     try {
@@ -67,9 +69,10 @@ export function AgentStoreView({ apiBaseUrl, visible }: AgentStoreViewProps) {
         throw new Error(body.detail || `HTTP ${resp.status}`);
       }
       const data = await resp.json();
-      setNotice(`✅ ${data.profile?.name || agentId} 安装成功！`);
+      setNotice(t("agentStore.installSuccess", { name: data.profile?.name || agentId }));
+      fetch(`${apiBaseUrl}/api/skills/reload`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(() => {});
     } catch (e: any) {
-      setNotice(`❌ 安装失败: ${e.message}`);
+      setNotice(t("agentStore.installFail", { msg: e.message }));
     } finally {
       setInstalling(null);
     }
@@ -164,10 +167,18 @@ export function AgentStoreView({ apiBaseUrl, visible }: AgentStoreViewProps) {
               {a.description?.slice(0, 120) || "暂无描述"}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
-              <span>📥 {a.downloads}</span>
-              {a.avgRating != null && a.avgRating > 0 && <span>⭐ {a.avgRating.toFixed(1)}</span>}
+              <span>{t("agentStore.downloads", { count: a.downloads })}</span>
+              {a.avgRating != null && a.avgRating > 0 && <span>{a.avgRating.toFixed(1)}</span>}
               {a.latestVersion && <span>v{a.latestVersion}</span>}
               {a.authorName && <span>by {a.authorName}</span>}
+              {a.license && (
+                <span style={{
+                  fontSize: 10, padding: "1px 5px", borderRadius: 3,
+                  background: "rgba(139,92,246,0.1)", color: "#7c3aed", fontWeight: 500,
+                }}>
+                  {a.license}
+                </span>
+              )}
             </div>
             {a.tags && a.tags.length > 0 && (
               <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 8 }}>
@@ -182,11 +193,11 @@ export function AgentStoreView({ apiBaseUrl, visible }: AgentStoreViewProps) {
               </div>
             )}
             <button
-              onClick={() => handleInstall(a.id)}
+              onClick={() => setConfirmAgent(a)}
               disabled={installing === a.id}
               style={{ width: "100%", marginTop: 4 }}
             >
-              {installing === a.id ? "安装中..." : "安装"}
+              {installing === a.id ? t("agentStore.installing") : t("agentStore.install")}
             </button>
           </div>
         ))}
@@ -194,11 +205,52 @@ export function AgentStoreView({ apiBaseUrl, visible }: AgentStoreViewProps) {
 
       {total > 20 && (
         <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 16 }}>
-          <button disabled={page <= 1} onClick={() => setPage(page - 1)}>上一页</button>
+          <button disabled={page <= 1} onClick={() => setPage(page - 1)}>{t("common.prevPage")}</button>
           <span style={{ fontSize: 13, color: "var(--muted)", lineHeight: "32px" }}>
-            第 {page} 页 / 共 {Math.ceil(total / 20)} 页
+            {t("common.pageInfo", { page, total: Math.ceil(total / 20) })}
           </span>
-          <button disabled={page * 20 >= total} onClick={() => setPage(page + 1)}>下一页</button>
+          <button disabled={page * 20 >= total} onClick={() => setPage(page + 1)}>{t("common.nextPage")}</button>
+        </div>
+      )}
+
+      {confirmAgent && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 9999,
+            background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+          onClick={() => setConfirmAgent(null)}
+        >
+          <div
+            className="card"
+            style={{ maxWidth: 420, width: "90%", padding: 24 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: "0 0 12px", fontSize: 16 }}>{t("agentStore.confirmTitle")}</h3>
+            <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, margin: "0 0 8px" }}>
+              {t("agentStore.confirmDesc", { name: confirmAgent.name })}
+            </p>
+            {confirmAgent.license && (
+              <p style={{ fontSize: 12, margin: "0 0 8px" }}>
+                <span style={{ fontWeight: 500 }}>{t("agentStore.license")}:</span>{" "}
+                <span style={{ padding: "1px 5px", borderRadius: 3, background: "rgba(139,92,246,0.1)", color: "#7c3aed" }}>
+                  {confirmAgent.license}
+                </span>
+              </p>
+            )}
+            <p style={{ fontSize: 11, color: "var(--muted)", margin: "0 0 16px", lineHeight: 1.5 }}>
+              {t("agentStore.licenseNotice")}
+            </p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button onClick={() => setConfirmAgent(null)}>{t("common.cancel")}</button>
+              <button
+                className="btnPrimary"
+                onClick={() => { const id = confirmAgent.id; setConfirmAgent(null); doInstall(id); }}
+              >
+                {t("agentStore.confirmInstall")}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

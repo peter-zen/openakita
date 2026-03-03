@@ -110,9 +110,12 @@ class AgentHubHandler:
             )
 
         from ...agents.packager import AgentInstaller
+        from ...agents.profile import ProfileStore
+        from ...config import settings
 
-        profile_store = self.agent.profile_store
-        skills_dir = Path(self.agent.base_dir) / "skills"
+        root = Path(settings.project_root)
+        profile_store = ProfileStore(root / "data" / "agents")
+        skills_dir = Path(settings.skills_path)
 
         installer = AgentInstaller(
             profile_store=profile_store,
@@ -125,14 +128,17 @@ class AgentHubHandler:
         except Exception as e:
             return f"❌ 安装失败: {e}"
 
+        from datetime import datetime
         if profile.hub_source is None:
             profile.hub_source = {}
         profile.hub_source.update({
             "platform": "openakita",
             "agent_id": agent_id,
-            "installed_at": __import__("datetime").datetime.now().isoformat(),
+            "installed_at": datetime.now().isoformat(),
         })
         profile_store.save(profile)
+
+        self._try_reload_skills()
 
         return (
             f"✅ Agent 从 Hub 安装成功！\n\n"
@@ -149,10 +155,13 @@ class AgentHubHandler:
             return "❌ 需要指定 profile_id"
 
         from ...agents.packager import AgentPackager
+        from ...agents.profile import ProfileStore
+        from ...config import settings
 
-        profile_store = self.agent.profile_store
-        skills_dir = Path(self.agent.base_dir) / "skills"
-        output_dir = Path(self.agent.base_dir) / "data" / "agent_packages"
+        root = Path(settings.project_root)
+        profile_store = ProfileStore(root / "data" / "agents")
+        skills_dir = Path(settings.skills_path)
+        output_dir = root / "data" / "agent_packages"
 
         packager = AgentPackager(
             profile_store=profile_store,
@@ -171,6 +180,17 @@ class AgentHubHandler:
             f"请访问 https://openakita.ai 登录后在"我的 Agent"页面手动上传，\n"
             f"或通过 Setup Center 的 Agent Store 页面发布。"
         )
+
+    def _try_reload_skills(self) -> None:
+        """Best-effort reload of skills after installation."""
+        try:
+            loader = getattr(self.agent, "skill_loader", None)
+            if loader:
+                from ...config import settings
+                loader.load_all(settings.project_root)
+                logger.info("Skills reloaded after Hub install")
+        except Exception as e:
+            logger.warning(f"Skill reload after Hub install failed (non-blocking): {e}")
 
     async def _get_detail(self, params: dict[str, Any]) -> str:
         agent_id = params.get("agent_id", "")

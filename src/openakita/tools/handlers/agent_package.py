@@ -4,7 +4,6 @@ Agent Package handler — export_agent, import_agent, list_exportable_agents, in
 
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -13,6 +12,17 @@ if TYPE_CHECKING:
     from ...core.agent import Agent
 
 logger = logging.getLogger(__name__)
+
+
+def _get_stores():
+    """Resolve profile_store, skills_dir, project_root from config."""
+    from ...agents.profile import ProfileStore
+    from ...config import settings
+
+    root = Path(settings.project_root)
+    profile_store = ProfileStore(root / "data" / "agents")
+    skills_dir = Path(settings.skills_path)
+    return profile_store, skills_dir, root
 
 
 class AgentPackageHandler:
@@ -51,9 +61,8 @@ class AgentPackageHandler:
         if not profile_id:
             return "❌ 需要指定 profile_id"
 
-        profile_store = self.agent.profile_store
-        skills_dir = Path(self.agent.base_dir) / "skills"
-        output_dir = Path(self.agent.base_dir) / "data" / "agent_packages"
+        profile_store, skills_dir, root = _get_stores()
+        output_dir = root / "data" / "agent_packages"
 
         packager = AgentPackager(
             profile_store=profile_store,
@@ -84,12 +93,11 @@ class AgentPackageHandler:
         if not package_path:
             return "❌ 需要指定 package_path"
 
+        profile_store, skills_dir, root = _get_stores()
+
         path = Path(package_path)
         if not path.is_absolute():
-            path = Path(self.agent.base_dir) / path
-
-        profile_store = self.agent.profile_store
-        skills_dir = Path(self.agent.base_dir) / "skills"
+            path = root / path
 
         installer = AgentInstaller(
             profile_store=profile_store,
@@ -99,17 +107,19 @@ class AgentPackageHandler:
         force = params.get("force", False)
         profile = installer.install(path, force=force)
 
+        self._try_reload_skills()
+
         return (
             f"✅ Agent 导入成功！\n\n"
             f"🤖 名称: {profile.name}\n"
             f"🆔 ID: {profile.id}\n"
             f"📝 描述: {profile.description}\n"
             f"🔧 技能: {', '.join(profile.skills) if profile.skills else '无'}\n\n"
-            f"你现在可以在 Agent 列表中找到并使用这个 Agent。"
+            f"Agent 及其技能已安装并自动加载。"
         )
 
     async def _list_exportable(self, params: dict[str, Any]) -> str:
-        profile_store = self.agent.profile_store
+        profile_store, _, _ = _get_stores()
         profiles = profile_store.list_all(include_hidden=False)
 
         if not profiles:
@@ -136,12 +146,11 @@ class AgentPackageHandler:
         if not package_path:
             return "❌ 需要指定 package_path"
 
+        profile_store, skills_dir, root = _get_stores()
+
         path = Path(package_path)
         if not path.is_absolute():
-            path = Path(self.agent.base_dir) / path
-
-        profile_store = self.agent.profile_store
-        skills_dir = Path(self.agent.base_dir) / "skills"
+            path = root / path
 
         installer = AgentInstaller(
             profile_store=profile_store,
@@ -172,6 +181,11 @@ class AgentPackageHandler:
                 f"**需要内置技能**: {', '.join(manifest['required_builtin_skills'])}"
             )
 
+        ext_skills = manifest.get("required_external_skills", [])
+        if ext_skills:
+            names = [s.get("id", "?") if isinstance(s, dict) else str(s) for s in ext_skills]
+            lines.append(f"**外部依赖技能**: {', '.join(names)}")
+
         if errors:
             lines.append(f"\n⚠️ 校验问题: {'; '.join(errors)}")
         if conflict:
@@ -185,6 +199,17 @@ class AgentPackageHandler:
 
         lines.append("\n使用 `import_agent` 工具导入此 Agent。")
         return "\n".join(lines)
+
+    def _try_reload_skills(self) -> None:
+        """Best-effort reload of skills after installation."""
+        try:
+            loader = getattr(self.agent, "skill_loader", None)
+            if loader:
+                from ...config import settings
+                loader.load_all(settings.project_root)
+                logger.info("Skills reloaded after agent package import")
+        except Exception as e:
+            logger.warning(f"Skill reload after import failed (non-blocking): {e}")
 
 
 def create_handler(agent: Agent):

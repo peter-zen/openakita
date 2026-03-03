@@ -1,27 +1,41 @@
+---
+name: search-hub-agents
+description: Search for Agents on the OpenAkita Platform Agent Store
+system: true
+handler: agent_hub
+tool-name: search_hub_agents
+category: Platform
+---
+
 # search-hub-agents
 
 Search for Agents on the OpenAkita Platform Agent Store.
 
-## Tools
+## When to Use
 
-- `search_hub_agents` - Search and browse available Agents on the platform
+- User wants to find or browse Agents on the OpenAkita marketplace
+- User asks "有什么 Agent 可以用" or "搜索一个 XX Agent"
+- User wants to discover community-shared Agents by category
 
-## Usage
+## Workflow
 
-Use this skill when the user wants to:
-- Find Agents on the OpenAkita hub marketplace
-- Browse available Agents by category
-- Discover community-shared Agents
+1. Call `search_hub_agents` with optional filters
+2. Review results — note the `id` field for each Agent
+3. Use `get_hub_agent_detail` (from install-hub-agent) to inspect before installing
+4. Use `install_hub_agent` to install the chosen Agent
 
 ## Parameters
 
-- `query` (optional): Search keyword
-- `category` (optional): Filter by category (e.g. customer_service, development, business)
-- `sort` (optional): Sort by downloads, rating, or newest
-- `page` (optional): Page number for pagination
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `query` | No | Search keyword (e.g. "客服", "project manager") |
+| `category` | No | Filter: customer_service, development, business, creative, education, productivity, general |
+| `sort` | No | Sort by: downloads (default), rating, newest |
+| `page` | No | Page number (default 1, 20 results per page) |
 
-## Examples
+## Fallback
 
-- "帮我搜索客服相关的 Agent"
-- "看看 Agent Store 有什么热门 Agent"
-- "搜索开发相关的 Agent"
+If the remote Agent Store is unavailable:
+- Local Agent import/export via `.akita-agent` files still works
+- Use `list_exportable_agents` to see local Agents
+- Suggest user retry later or check network

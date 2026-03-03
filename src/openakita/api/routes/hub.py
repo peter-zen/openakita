@@ -23,7 +23,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, HTTPException, Query, Request, UploadFile, File
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
@@ -48,13 +48,43 @@ def _get_stores():
     agents_dir = root / "data" / "agents"
     profile_store = ProfileStore(agents_dir)
 
-    skills_dir = root / "skills"
+    skills_dir = Path(settings.skills_path)
     return profile_store, skills_dir, root
+
+
+def _reload_skills(request) -> None:
+    """Trigger skill reload on the running agent after installing from platform.
+
+    Uses the same mechanism as POST /api/skills/reload — access the live
+    agent's skill_loader to re-scan all skill directories.
+    Best-effort: failures are logged but never break the install flow.
+    """
+    try:
+        from openakita.core.agent import Agent
+
+        agent = getattr(request.app.state, "agent", None)
+        actual_agent = agent
+        if not isinstance(agent, Agent):
+            actual_agent = getattr(agent, "_local_agent", None)
+        if actual_agent is None:
+            logger.debug("Skill reload skipped: agent not initialized")
+            return
+
+        loader = getattr(actual_agent, "skill_loader", None)
+        if not loader:
+            logger.debug("Skill reload skipped: no skill_loader on agent")
+            return
+
+        count = loader.load_all(Path(_project_root()))
+        logger.info(f"Skills reloaded after platform install: {count} loaded")
+    except Exception as e:
+        logger.warning(f"Skill reload after platform install failed (non-blocking): {e}")
 
 
 class ExportRequest(BaseModel):
     profile_id: str
     author_name: str = ""
+    author_url: str = ""
     version: str = "1.0.0"
     include_skills: list[str] | None = None
 
@@ -77,6 +107,7 @@ async def export_agent(req: ExportRequest):
         output_path = packager.package(
             profile_id=req.profile_id,
             author_name=req.author_name,
+            author_url=req.author_url,
             version=req.version,
             include_skills=req.include_skills,
         )
@@ -92,6 +123,7 @@ async def export_agent(req: ExportRequest):
 
 @router.post("/api/agents/package/import")
 async def import_agent(
+    request: Request,
     file: UploadFile = File(...),
     force: bool = False,
 ):
@@ -118,6 +150,8 @@ async def import_agent(
         raise HTTPException(status_code=400, detail=str(e))
     finally:
         tmp_path.unlink(missing_ok=True)
+
+    _reload_skills(request)
 
     return {
         "message": "Agent imported successfully",
@@ -229,7 +263,7 @@ async def hub_agent_detail(agent_id: str):
 
 
 @router.post("/api/hub/agents/{agent_id}/install")
-async def hub_install_agent(agent_id: str, force: bool = False):
+async def hub_install_agent(request: Request, agent_id: str, force: bool = False):
     """Download agent from hub and install locally."""
     client = _get_hub_client()
     try:
@@ -258,6 +292,8 @@ async def hub_install_agent(agent_id: str, force: bool = False):
         "installed_at": datetime.now().isoformat(),
     })
     profile_store.save(profile)
+
+    _reload_skills(request)
 
     return {
         "message": "Agent installed from Hub",
@@ -306,7 +342,7 @@ async def hub_skill_detail(skill_id: str):
 
 
 @router.post("/api/hub/skills/{skill_id}/install")
-async def hub_install_skill(skill_id: str):
+async def hub_install_skill(request: Request, skill_id: str):
     """Get skill info from platform and install locally."""
     client = _get_skill_client()
     try:
@@ -330,6 +366,8 @@ async def hub_install_skill(skill_id: str):
         raise HTTPException(status_code=500, detail=f"安装失败: {e}")
     finally:
         await client.close()
+
+    _reload_skills(request)
 
     return {
         "message": "Skill installed from Store",

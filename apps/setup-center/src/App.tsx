@@ -352,6 +352,7 @@ export function App() {
   // advanced panel state
   const [advSysInfo, setAdvSysInfo] = useState<Record<string, string> | null>(null);
   const [advLoading, setAdvLoading] = useState<Record<string, boolean>>({});
+  const [hubApiUrl, setHubApiUrl] = useState<string>("");
   const advLoadedRef = useRef(false);
 
   // backup state
@@ -2765,6 +2766,14 @@ export function App() {
         })
         .catch(() => {})
         .finally(() => setAdvLoading((p) => ({ ...p, sysinfo: false })));
+
+      // Load current HUB_API_URL from .env
+      safeFetch(`${apiUrl}/api/config/env`, { signal: AbortSignal.timeout(5_000) })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.env?.HUB_API_URL) setHubApiUrl(data.env.HUB_API_URL);
+        })
+        .catch(() => {});
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stepId]);
@@ -5355,6 +5364,59 @@ export function App() {
                 </div>
               )}
             </div>
+        </div>
+
+        {/* ── 平台连接（Agent Hub / Skill Store） ── */}
+        <div className="card" style={{ marginTop: 12 }}>
+          {sectionHeader("hub", t("adv.hubTitle"))}
+          <div style={{ paddingLeft: 22 }}>
+            <div className="cardHint" style={{ marginBottom: 8 }}>{t("adv.hubHint")}</div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input
+                type="text"
+                value={hubApiUrl}
+                onChange={(e) => setHubApiUrl(e.target.value)}
+                placeholder={t("adv.hubUrlPlaceholder")}
+                style={{ flex: 1, maxWidth: 380, fontSize: 12, padding: "6px 10px", borderRadius: 6, border: "1px solid var(--line)", background: "var(--bg)", color: "var(--fg)" }}
+              />
+              <button
+                className="btnSmall btnSmallPrimary"
+                disabled={!!busy}
+                onClick={async () => {
+                  const val = hubApiUrl.trim() || "https://openakita.ai/api";
+                  if (shouldUseHttpApi()) {
+                    try {
+                      await safeFetch(`${httpApiBase()}/api/config/env`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ entries: { HUB_API_URL: val } }),
+                      });
+                      setNotice(t("adv.hubSaved"));
+                    } catch (e) { setError(String(e)); }
+                  } else {
+                    setEnvDraft((prev) => envSet(prev, "HUB_API_URL", val));
+                    setNotice(t("adv.hubSaved"));
+                  }
+                }}
+              >
+                {t("common.save") || "Save"}
+              </button>
+              <button
+                className="btnSmall"
+                disabled={!!busy}
+                onClick={async () => {
+                  const url = (hubApiUrl.trim() || "https://openakita.ai/api").replace(/\/$/, "");
+                  try {
+                    const res = await fetch(`${url}/health`, { signal: AbortSignal.timeout(6000) });
+                    if (res.ok) setNotice(t("adv.hubTestOk"));
+                    else setError(t("adv.hubTestFail"));
+                  } catch { setError(t("adv.hubTestFail")); }
+                }}
+              >
+                {t("adv.hubTest")}
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* ── .env 导出/导入（保留旧功能） ── */}

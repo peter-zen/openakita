@@ -112,6 +112,7 @@ class AgentPackager:
                 external_skill_refs.append(ExternalSkillRef(
                     id=skill_name,
                     source=meta.get("source", skill_name),
+                    version=meta.get("version", ""),
                     license=meta.get("license", "unknown"),
                     url=meta.get("url", ""),
                     required=True,
@@ -346,9 +347,9 @@ class AgentInstaller:
             if self.profile_store.exists(profile_id) and not force:
                 profile_id = self._resolve_conflict(profile_id)
 
-            installed_skills = self._install_skills(zf, manifest.bundled_skills)
+            installed_skills = self._install_skills(zf, manifest.bundled_skills, agent_id=manifest.id)
 
-            ext_results = self._fetch_external_skills(manifest.required_external_skills)
+            ext_results = self._fetch_external_skills(manifest.required_external_skills, agent_id=manifest.id)
             installed_skills.extend(ext_results)
 
             profile_data["id"] = profile_id
@@ -412,10 +413,97 @@ class AgentInstaller:
                     f"Symlinks not allowed: {info.filename}"
                 )
 
+    # ── Skill version helpers ──
+
+    _ORIGIN_FILE = ".openakita-origin.json"
+
+    def _read_installed_version(self, skill_dir: Path) -> str | None:
+        """Read the version of an already-installed skill.
+
+        Checks (in order): .openakita-origin.json → SKILL.md frontmatter version.
+        """
+        origin = skill_dir / self._ORIGIN_FILE
+        if origin.exists():
+            try:
+                data = json.loads(origin.read_text("utf-8"))
+                return data.get("version") or None
+            except Exception:
+                pass
+        skill_md = skill_dir / "SKILL.md"
+        if skill_md.exists():
+            try:
+                import yaml, re as _re
+                m = _re.match(r"^---\s*\n(.*?)\n---", skill_md.read_text("utf-8"), _re.DOTALL)
+                if m:
+                    fm = yaml.safe_load(m.group(1)) or {}
+                    return fm.get("version") or None
+            except Exception:
+                pass
+        return None
+
+    @staticmethod
+    def _is_newer(incoming: str | None, existing: str | None) -> bool:
+        """Compare semver-ish strings. Returns True if incoming > existing."""
+        if not incoming:
+            return False
+        if not existing:
+            return True
+        try:
+            def _parts(v: str) -> tuple[int, ...]:
+                return tuple(int(x) for x in v.split(".")[:3])
+            return _parts(incoming) > _parts(existing)
+        except (ValueError, TypeError):
+            return incoming > existing
+
+    def _write_origin(self, skill_dir: Path, *, source: str, version: str | None,
+                      origin_type: str, agent_id: str = "") -> None:
+        """Write .openakita-origin.json sidecar to track provenance."""
+        data = {
+            "source": source,
+            "version": version or "",
+            "type": origin_type,
+            "installed_at": datetime.now(timezone.utc).isoformat(),
+        }
+        if agent_id:
+            data["installed_by_agent"] = agent_id
+        (skill_dir / self._ORIGIN_FILE).write_text(
+            json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+
+    def _find_installed_skill_dir(self, skill_id: str) -> Path | None:
+        """Locate an already-installed skill across all sub-directories."""
+        for subdir in ("custom", "community", "system", "builtin"):
+            d = self.skills_dir / subdir / skill_id
+            if (d / "SKILL.md").exists():
+                return d
+        d = self.skills_dir / skill_id
+        if (d / "SKILL.md").exists():
+            return d
+        return None
+
+    def _extract_bundled_version(self, zf: zipfile.ZipFile, skill_name: str) -> str | None:
+        """Extract version from bundled SKILL.md inside the zip (without full extraction)."""
+        skill_md_path = f"skills/{skill_name}/SKILL.md"
+        if skill_md_path not in zf.namelist():
+            return None
+        try:
+            import yaml, re as _re
+            content = zf.read(skill_md_path).decode("utf-8", errors="replace")
+            m = _re.match(r"^---\s*\n(.*?)\n---", content, _re.DOTALL)
+            if m:
+                fm = yaml.safe_load(m.group(1)) or {}
+                return fm.get("version") or None
+        except Exception:
+            pass
+        return None
+
+    # ── Skill installation ──
+
     def _install_skills(
-        self, zf: zipfile.ZipFile, bundled_skills: list[str]
+        self, zf: zipfile.ZipFile, bundled_skills: list[str],
+        agent_id: str = "",
     ) -> list[str]:
-        """解压并安装捆绑的技能"""
+        """Extract and install bundled skills with version-aware dedup."""
         installed = []
         custom_skills_dir = self.skills_dir / "custom"
         custom_skills_dir.mkdir(parents=True, exist_ok=True)
@@ -431,12 +519,22 @@ class AgentInstaller:
                 logger.warning(f"Bundled skill not found in package: {skill_name}")
                 continue
 
-            skill_md_found = any(
-                n.endswith("SKILL.md") for n in skill_files
-            )
+            skill_md_found = any(n.endswith("SKILL.md") for n in skill_files)
             if not skill_md_found:
                 logger.warning(f"Bundled skill missing SKILL.md: {skill_name}")
                 continue
+
+            incoming_ver = self._extract_bundled_version(zf, skill_name)
+            existing_dir = self._find_installed_skill_dir(skill_name)
+            if existing_dir is not None:
+                existing_ver = self._read_installed_version(existing_dir)
+                if incoming_ver and existing_ver and not self._is_newer(incoming_ver, existing_ver):
+                    logger.info(
+                        f"Skill '{skill_name}' already installed "
+                        f"(v{existing_ver} >= incoming v{incoming_ver}), skipping"
+                    )
+                    installed.append(skill_name)
+                    continue
 
             target_dir = custom_skills_dir / skill_name
             target_dir.mkdir(parents=True, exist_ok=True)
@@ -447,19 +545,21 @@ class AgentInstaller:
                 target_file.parent.mkdir(parents=True, exist_ok=True)
                 target_file.write_bytes(zf.read(filename))
 
+            self._write_origin(
+                target_dir, source="bundled", version=incoming_ver,
+                origin_type="bundled", agent_id=agent_id,
+            )
             installed.append(skill_name)
-            logger.info(f"Installed bundled skill: {skill_name} -> {target_dir}")
+            logger.info(f"Installed bundled skill: {skill_name} v{incoming_ver or '?'} -> {target_dir}")
 
         return installed
 
     def _fetch_external_skills(
-        self, ext_refs: list[Any]
+        self, ext_refs: list[Any], agent_id: str = "",
     ) -> list[str]:
-        """
-        Attempt to install required_external_skills from their original sources.
+        """Fetch required_external_skills with version-aware dedup.
 
-        Uses the local skill installer if available, falling back to a
-        simple GitHub-based clone. Failures are non-blocking.
+        Failures are non-blocking — the agent is still installed.
         """
         if not ext_refs:
             return []
@@ -469,16 +569,27 @@ class AgentInstaller:
             skill_id = ref.id if hasattr(ref, "id") else ref.get("id", "")
             source = ref.source if hasattr(ref, "source") else ref.get("source", "")
             required = ref.required if hasattr(ref, "required") else ref.get("required", True)
+            incoming_ver = ref.version if hasattr(ref, "version") else ref.get("version", "")
 
-            if self._skill_exists_locally(skill_id):
-                logger.info(f"External skill already installed: {skill_id}")
-                installed.append(skill_id)
-                continue
+            existing_dir = self._find_installed_skill_dir(skill_id)
+            if existing_dir is not None:
+                existing_ver = self._read_installed_version(existing_dir)
+                if incoming_ver and existing_ver and not self._is_newer(incoming_ver, existing_ver):
+                    logger.info(
+                        f"External skill '{skill_id}' already installed "
+                        f"(v{existing_ver} >= incoming v{incoming_ver}), skipping"
+                    )
+                    installed.append(skill_id)
+                    continue
 
             try:
-                self._install_from_source(skill_id, source)
+                target_dir = self._install_from_source(skill_id, source)
+                self._write_origin(
+                    target_dir, source=source, version=incoming_ver,
+                    origin_type="external", agent_id=agent_id,
+                )
                 installed.append(skill_id)
-                logger.info(f"Fetched external skill: {skill_id} from {source}")
+                logger.info(f"Fetched external skill: {skill_id} v{incoming_ver or 'latest'} from {source}")
             except Exception as e:
                 level = "Required" if required else "Optional"
                 logger.warning(
@@ -493,20 +604,12 @@ class AgentInstaller:
         return installed
 
     def _skill_exists_locally(self, skill_id: str) -> bool:
-        for subdir in ["custom", "community", "system", "builtin"]:
-            if (self.skills_dir / subdir / skill_id / "SKILL.md").exists():
-                return True
-        if (self.skills_dir / skill_id / "SKILL.md").exists():
-            return True
-        return False
+        return self._find_installed_skill_dir(skill_id) is not None
 
-    def _install_from_source(self, skill_id: str, source: str) -> None:
-        """
-        Fetch a skill from its source (e.g. 'owner/repo@skill-name').
+    def _install_from_source(self, skill_id: str, source: str) -> Path:
+        """Fetch a skill from its source and return the install dir.
 
-        This is a best-effort implementation that clones from GitHub.
-        A more sophisticated version could integrate with skills.sh or
-        the platform API.
+        Best-effort GitHub clone implementation.
         """
         import subprocess
         import tempfile
@@ -550,6 +653,8 @@ class AgentInstaller:
                     dest = target_dir / file.relative_to(src_skill)
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     dest.write_bytes(file.read_bytes())
+
+        return target_dir
 
     def _resolve_conflict(self, profile_id: str) -> str:
         """ID 冲突时追加后缀"""

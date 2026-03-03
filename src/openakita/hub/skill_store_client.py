@@ -18,6 +18,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import json
+from datetime import datetime, timezone
+
 import httpx
 
 from ..config import settings
@@ -84,6 +87,29 @@ class SkillStoreClient:
         resp.raise_for_status()
         return resp.json()
 
+    @staticmethod
+    def _write_origin(skill_dir: Path, install_url: str) -> None:
+        """Write .openakita-origin.json to track skill provenance."""
+        try:
+            origin = {
+                "source": install_url,
+                "type": "platform_store",
+                "installed_at": datetime.now(timezone.utc).isoformat(),
+            }
+            skill_md = skill_dir / "SKILL.md"
+            if skill_md.exists():
+                import yaml, re
+                m = re.match(r"^---\s*\n(.*?)\n---", skill_md.read_text("utf-8"), re.DOTALL)
+                if m:
+                    fm = yaml.safe_load(m.group(1)) or {}
+                    if fm.get("version"):
+                        origin["version"] = fm["version"]
+            (skill_dir / ".openakita-origin.json").write_text(
+                json.dumps(origin, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+        except Exception as e:
+            logger.debug(f"Failed to write origin tracking: {e}")
+
     async def install_skill(self, install_url: str, target_dir: Path | None = None) -> Path:
         """安装 Skill 到本地
 
@@ -124,6 +150,8 @@ class SkillStoreClient:
             git_dir = skill_dir / ".git"
             if git_dir.exists():
                 shutil.rmtree(git_dir)
+
+            self._write_origin(skill_dir, install_url)
 
             logger.info(f"Installed skill: {skill_name} -> {skill_dir}")
             return skill_dir
