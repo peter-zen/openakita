@@ -67,6 +67,15 @@ const DEFAULT_API = "http://127.0.0.1:18900";
 
 const BOT_TYPES = ["feishu", "telegram", "dingtalk", "wework", "onebot", "qqbot"] as const;
 
+const BOT_TYPE_LABELS: Record<string, string> = {
+  feishu: "飞书",
+  telegram: "Telegram",
+  dingtalk: "钉钉",
+  wework: "企业微信",
+  onebot: "OneBot (QQ)",
+  qqbot: "QQ 官方机器人",
+};
+
 const CREDENTIAL_FIELDS: Record<string, { key: string; label: string; secret?: boolean }[]> = {
   feishu: [
     { key: "app_id", label: "App ID" },
@@ -667,7 +676,7 @@ function BotConfigTab({ apiBase, multiAgentEnabled }: { apiBase: string; multiAg
                   fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4,
                   background: "rgba(99,102,241,0.12)", color: "#6366f1",
                 }}>
-                  {bot.type}
+                  {BOT_TYPE_LABELS[bot.type] || bot.type}
                 </span>
                 <span style={{
                   fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4,
@@ -856,7 +865,7 @@ function BotConfigTab({ apiBase, multiAgentEnabled }: { apiBase: string; multiAg
                 }}
               >
                 {BOT_TYPES.map((bt) => (
-                  <option key={bt} value={bt}>{bt}</option>
+                  <option key={bt} value={bt}>{BOT_TYPE_LABELS[bt] || bt}</option>
                 ))}
               </select>
             </label>
