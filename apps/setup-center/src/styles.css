@@ -2385,10 +2385,6 @@ button:disabled {
   background: var(--panel);
   border: 1px solid var(--line);
   color: var(--text);
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
 }
 .obSkipBtn:hover {
   background: var(--nav-hover);

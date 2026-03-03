@@ -7786,7 +7786,7 @@ export function App() {
             <div className="obFooter">
               {stepIndicator}
               <div className="obFooterBtns">
-                <button onClick={() => setObStep("ob-welcome")}>{t("config.prev")}</button>
+                <button className="obSkipBtn" onClick={() => setObStep("ob-welcome")}>{t("config.prev")}</button>
                 <button
                   className="btnPrimary"
                   onClick={() => {
@@ -7817,7 +7817,7 @@ export function App() {
             <div className="obFooter">
               {stepIndicator}
               <div className="obFooterBtns">
-                <button onClick={() => setObStep("ob-agreement")}>{t("config.prev")}</button>
+                <button className="obSkipBtn" onClick={() => setObStep("ob-agreement")}>{t("config.prev")}</button>
                 {savedEndpoints.length > 0 ? (
                   <button className="btnPrimary" onClick={() => setObStep("ob-im")}>
                     {t("config.next")}
@@ -7844,7 +7844,7 @@ export function App() {
             <div className="obFooter">
               {stepIndicator}
               <div className="obFooterBtns">
-                <button onClick={() => setObStep("ob-llm")}>{t("config.prev")}</button>
+                <button className="obSkipBtn" onClick={() => setObStep("ob-llm")}>{t("config.prev")}</button>
                 <button className="btnPrimary" onClick={() => { obLoadModules(); setObStep("ob-modules"); }}>
                   {t("config.next")}
                 </button>
@@ -7899,7 +7899,7 @@ export function App() {
             <div className="obFooter">
               {stepIndicator}
               <div className="obFooterBtns">
-                <button onClick={() => setObStep("ob-im")}>{t("config.prev")}</button>
+                <button className="obSkipBtn" onClick={() => setObStep("ob-im")}>{t("config.prev")}</button>
                 <button className="btnPrimary" onClick={() => setObStep("ob-cli")}>
                   {t("config.next")}
                 </button>
@@ -8002,7 +8002,7 @@ export function App() {
             <div className="obFooter">
               {stepIndicator}
               <div className="obFooterBtns">
-                <button onClick={() => setObStep("ob-modules")}>{t("config.prev")}</button>
+                <button className="obSkipBtn" onClick={() => setObStep("ob-modules")}>{t("config.prev")}</button>
                 <button className="btnPrimary" onClick={() => { setObStep("ob-progress"); obRunSetup(); }}>
                   {t("onboarding.modules.startInstall")}
                 </button>
