@@ -10,6 +10,7 @@ type IconProps = {
   style?: React.CSSProperties;
   color?: string;
   strokeWidth?: number;
+  onClick?: React.MouseEventHandler<SVGSVGElement>;
 };
 
 const defaults = { size: 18, strokeWidth: 2 };
@@ -19,7 +20,7 @@ function svg(
   children: React.ReactNode,
   viewBox = "0 0 24 24",
 ) {
-  const { size = defaults.size, className, style, color, strokeWidth = defaults.strokeWidth } = props;
+  const { size = defaults.size, className, style, color, strokeWidth = defaults.strokeWidth, onClick } = props;
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -33,6 +34,7 @@ function svg(
       strokeLinejoin="round"
       className={className}
       style={style}
+      onClick={onClick}
     >
       {children}
     </svg>
