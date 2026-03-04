@@ -38,8 +38,8 @@ class MCPServerInfo:
     command: str | None = None
     args: list[str] = field(default_factory=list)
     env: dict[str, str] = field(default_factory=dict)
-    transport: str = "stdio"  # "stdio" | "streamable_http"
-    url: str = ""  # streamable_http 模式使用
+    transport: str = "stdio"  # "stdio" | "streamable_http" | "sse"
+    url: str = ""  # streamable_http / sse 模式使用
     auto_connect: bool = False
 
 
@@ -175,10 +175,13 @@ Use `call_mcp_tool(server, tool_name, arguments)` to call an MCP tool when neede
             command = metadata.get("command")
             args = metadata.get("args") or []
             env = metadata.get("env") or {}
-            # 传输协议：支持 "transport": "streamable_http" 或 "type": "streamableHttp"
+            # 传输协议：支持 "transport" 字段 或 "type" 字段 (兼容多种格式)
             transport = metadata.get("transport", "stdio")
-            if metadata.get("type") == "streamableHttp":
+            stype = metadata.get("type", "")
+            if stype == "streamableHttp":
                 transport = "streamable_http"
+            elif stype == "sse":
+                transport = "sse"
             url = metadata.get("url", "")
             auto_connect = metadata.get("autoConnect", False)
 

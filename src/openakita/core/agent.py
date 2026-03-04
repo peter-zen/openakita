@@ -1350,7 +1350,7 @@ class Agent:
                 transport = server.transport or "stdio"
                 if transport == "stdio" and not server.command:
                     continue
-                if transport == "streamable_http" and not server.url:
+                if transport in ("streamable_http", "sse") and not server.url:
                     continue
                 self.mcp_client.add_server(
                     MCPServerConfig(

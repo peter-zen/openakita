@@ -27,7 +27,7 @@ type MCPServer = {
 
 type AddServerForm = {
   name: string;
-  transport: "stdio" | "streamable_http";
+  transport: "stdio" | "streamable_http" | "sse";
   command: string;
   args: string;
   env: string;
@@ -138,6 +138,7 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
     if (!form.name.trim()) { showMsg("请输入服务器名称", false); return; }
     if (form.transport === "stdio" && !form.command.trim()) { showMsg("stdio 模式需要填写启动命令", false); return; }
     if (form.transport === "streamable_http" && !form.url.trim()) { showMsg("HTTP 模式需要填写 URL", false); return; }
+    if (form.transport === "sse" && !form.url.trim()) { showMsg("SSE 模式需要填写 URL", false); return; }
     setBusy("add");
     try {
       const envObj: Record<string, string> = {};
@@ -267,9 +268,10 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
             </div>
             <div>
               <label className="label">传输协议</label>
-              <select className="input" value={form.transport} onChange={e => setForm({ ...form, transport: e.target.value as "stdio" | "streamable_http" })}>
+              <select className="input" value={form.transport} onChange={e => setForm({ ...form, transport: e.target.value as "stdio" | "streamable_http" | "sse" })}>
                 <option value="stdio">stdio (标准输入输出)</option>
                 <option value="streamable_http">Streamable HTTP</option>
+                <option value="sse">SSE (Server-Sent Events)</option>
               </select>
             </div>
             {form.transport === "stdio" ? (
@@ -341,7 +343,7 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
                   {s.connected ? <DotGreen /> : <DotGray />}
                   <span style={{ fontWeight: 600, fontSize: 14 }}>{s.name}</span>
                   <span style={{ fontSize: 12, color: "var(--muted)", background: "var(--bg-subtle, #f1f5f9)", padding: "1px 6px", borderRadius: 3 }}>
-                    {s.transport === "streamable_http" ? "HTTP" : "stdio"}
+                    {s.transport === "streamable_http" ? "HTTP" : s.transport === "sse" ? "SSE" : "stdio"}
                   </span>
                   <span style={{
                     fontSize: 11, padding: "1px 6px", borderRadius: 3,
@@ -396,7 +398,7 @@ export function MCPView({ serviceRunning }: { serviceRunning: boolean }) {
                 <div style={{ borderTop: "1px solid var(--line, #e5e7eb)", padding: "12px 16px" }}>
                   {/* Connection info */}
                   <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
-                    {s.transport === "streamable_http" ? (
+                    {s.transport === "streamable_http" || s.transport === "sse" ? (
                       <span>URL: <code>{s.url}</code></span>
                     ) : (
                       <span>命令: <code>{s.command}</code></span>

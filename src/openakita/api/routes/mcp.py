@@ -214,6 +214,8 @@ async def add_mcp_server(request: Request, body: MCPServerAddRequest):
         return {"status": "error", "message": "stdio transport requires a command"}
     if body.transport == "streamable_http" and not body.url.strip():
         return {"status": "error", "message": "streamable_http transport requires a url"}
+    if body.transport == "sse" and not body.url.strip():
+        return {"status": "error", "message": "sse transport requires a url"}
 
     from openakita.config import settings
 

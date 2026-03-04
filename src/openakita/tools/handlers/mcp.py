@@ -201,6 +201,8 @@ class MCPHandler:
             return "❌ stdio 模式需要指定 command 参数"
         if transport == "streamable_http" and not url:
             return "❌ streamable_http 模式需要指定 url 参数"
+        if transport == "sse" and not url:
+            return "❌ sse 模式需要指定 url 参数"
 
         # 写入到工作区 data/mcp/servers/{name}/
         server_dir = settings.mcp_config_path / name

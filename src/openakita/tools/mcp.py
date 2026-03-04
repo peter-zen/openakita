@@ -38,6 +38,15 @@ try:
 except ImportError:
     pass
 
+# 尝试导入 SSE 客户端（兼容旧版 MCP 服务器）
+MCP_SSE_AVAILABLE = False
+try:
+    from mcp.client.sse import sse_client
+
+    MCP_SSE_AVAILABLE = True
+except ImportError:
+    pass
+
 
 @dataclass
 class MCPTool:
@@ -76,8 +85,8 @@ class MCPServerConfig:
     args: list[str] = field(default_factory=list)
     env: dict[str, str] = field(default_factory=dict)
     description: str = ""
-    transport: str = "stdio"  # "stdio" | "streamable_http"
-    url: str = ""  # streamable_http 模式使用
+    transport: str = "stdio"  # "stdio" | "streamable_http" | "sse"
+    url: str = ""  # streamable_http / sse 模式使用
 
 
 @dataclass
@@ -134,9 +143,12 @@ class MCPClient:
 
             for name, server_data in servers.items():
                 transport = server_data.get("transport", "stdio")
-                # 兼容 "type": "streamableHttp" 格式
-                if server_data.get("type") == "streamableHttp":
+                # 兼容多种格式
+                stype = server_data.get("type", "")
+                if stype == "streamableHttp":
                     transport = "streamable_http"
+                elif stype == "sse":
+                    transport = "sse"
                 config = MCPServerConfig(
                     name=name,
                     command=server_data.get("command", ""),
@@ -184,6 +196,8 @@ class MCPClient:
         try:
             if config.transport == "streamable_http":
                 return await self._connect_streamable_http(server_name, config)
+            elif config.transport == "sse":
+                return await self._connect_sse(server_name, config)
             else:
                 return await self._connect_stdio(server_name, config)
 
@@ -307,6 +321,60 @@ class MCPClient:
                 pass
             return False
 
+    async def _connect_sse(self, server_name: str, config: MCPServerConfig) -> bool:
+        """通过 SSE (Server-Sent Events) 连接到 MCP 服务器"""
+        if not MCP_SSE_AVAILABLE:
+            logger.error(
+                f"SSE transport not available for {server_name}. "
+                "Upgrade MCP SDK: pip install 'mcp>=1.2.0'"
+            )
+            return False
+
+        if not config.url:
+            logger.error(f"No URL configured for SSE server: {server_name}")
+            return False
+
+        sse_cm = None
+        client_cm = None
+        try:
+            sse_cm = sse_client(url=config.url)
+            read, write = await asyncio.wait_for(
+                sse_cm.__aenter__(), timeout=self._CONNECT_TIMEOUT,
+            )
+
+            client_cm = ClientSession(read, write)
+            client = await asyncio.wait_for(
+                client_cm.__aenter__(), timeout=self._CONNECT_TIMEOUT,
+            )
+            await asyncio.wait_for(client.initialize(), timeout=self._CONNECT_TIMEOUT)
+
+            await asyncio.wait_for(
+                self._discover_capabilities(server_name, client),
+                timeout=self._CONNECT_TIMEOUT,
+            )
+
+            self._connections[server_name] = {
+                "client": client,
+                "transport": "sse",
+                "_client_cm": client_cm,
+                "_sse_cm": sse_cm,
+            }
+            logger.info(f"Connected to MCP server via SSE: {server_name} ({config.url})")
+            return True
+        except BaseException as e:
+            logger.error(f"Failed to connect to {server_name} via SSE: {e}")
+            try:
+                if client_cm:
+                    await client_cm.__aexit__(None, None, None)
+            except Exception:
+                pass
+            try:
+                if sse_cm:
+                    await sse_cm.__aexit__(None, None, None)
+            except Exception:
+                pass
+            return False
+
     async def _discover_capabilities(self, server_name: str, client: Any) -> None:
         """发现 MCP 服务器的能力（工具、资源、提示词）"""
         # 获取工具
@@ -344,7 +412,7 @@ class MCPClient:
         if server_name in self._connections:
             conn = self._connections.pop(server_name)
             # 逐个关闭，每个独立 try/except 防止一个失败阻塞后续清理
-            for cm_key in ("_client_cm", "_stdio_cm", "_http_cm"):
+            for cm_key in ("_client_cm", "_stdio_cm", "_http_cm", "_sse_cm"):
                 cm = conn.get(cm_key)
                 if cm is None:
                     continue
