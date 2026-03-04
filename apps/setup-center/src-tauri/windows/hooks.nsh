@@ -162,22 +162,8 @@
     FileClose $R5
   ${EndIf}
 
-  ; 仅当用户在安装页面明确勾选时，以当前用户身份清理 venv/runtime
-  ${If} $EnvCleanVenvChecked == ${BST_CHECKED}
-  ${OrIf} $EnvCleanRuntimeChecked == ${BST_CHECKED}
-    StrCpy $R9 ""
-    ${If} $EnvCleanVenvChecked == ${BST_CHECKED}
-      StrCpy $R9 "venv"
-    ${EndIf}
-    ${If} $EnvCleanRuntimeChecked == ${BST_CHECKED}
-      ${If} $R9 != ""
-        StrCpy $R9 "$R9 runtime"
-      ${Else}
-        StrCpy $R9 "runtime"
-      ${EndIf}
-    ${EndIf}
-    nsis_tauri_utils::RunAsUser "$INSTDIR\${MAINBINARYNAME}.exe" "--clean-env $R9"
-  ${EndIf}
+  ; 以当前用户身份清理旧环境组件（安全网：处理 NSIS 进程上下文与实际用户不同的边界情况）
+  nsis_tauri_utils::RunAsUser "$INSTDIR\${MAINBINARYNAME}.exe" "--clean-env venv runtime"
 
   ; Finish 页面会提供"运行应用程序"选项 (带 --first-run 参数)
   ; 这里无需额外操作，RunMainBinary 已带 --first-run
@@ -190,7 +176,7 @@
   ${AndIf} $UpdateMode <> 1
     ExpandEnvStrings $R0 "%USERPROFILE%\\.openakita"
     System::Call 'kernel32::SetEnvironmentVariable(t "NSIS_DEL_PATH", t R0)'
-    ExecWait 'powershell -NoProfile -WindowStyle Hidden -Command "Remove-Item -LiteralPath $env:NSIS_DEL_PATH -Recurse -Force -ErrorAction SilentlyContinue"' $0
+    ExecWait 'powershell -NoProfile -WindowStyle Hidden -Command "try { Remove-Item -LiteralPath $env:NSIS_DEL_PATH -Recurse -Force -ErrorAction Stop } catch { exit 1 }"' $0
     ${If} $0 != 0
       ExecWait 'cmd /c rd /s /q "$R0"'
     ${EndIf}

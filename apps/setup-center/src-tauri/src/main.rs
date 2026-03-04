@@ -699,6 +699,7 @@ fn graceful_stop_pid(pid: u32, port: Option<u16>) -> Result<(), String> {
     // 第一步：尝试通过 HTTP API 触发优雅关闭
     let api_ok = reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(3))
+        .no_proxy()
         .build()
         .ok()
         .and_then(|client| {
@@ -1584,6 +1585,7 @@ enum VersionCheckResult {
 fn startup_version_check(app_version: &str, port: u16) -> VersionCheckResult {
     let client = match reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(3))
+        .no_proxy()
         .build()
     {
         Ok(c) => c,
@@ -1888,6 +1890,7 @@ fn main() {
             openakita_list_marketplace,
             openakita_get_skill_config,
             fetch_pypi_versions,
+            local_api_request,
             http_get_json,
             http_proxy_request,
             read_file_base64,
@@ -1916,13 +1919,22 @@ fn main() {
                 // Safety-net: clean up backend processes on ANY exit path
                 // (SIGTERM, system shutdown, unexpected termination, etc.)
                 // Idempotent — harmless if tray-quit already stopped everything.
+                //
+                // 直接 kill 进程而非走 HTTP /api/shutdown：
+                //   1. 退出时要尽快完成清理，避免 Finder/macOS 等待超时后强杀本进程
+                //      导致后端沦为孤儿进程。
+                //   2. Python 后端已注册 SIGTERM handler，收到信号即可优雅关闭。
+                //   3. HTTP API 可能因代理、端口状态等原因不可达，增加不确定性。
                 let entries = list_service_pids();
                 for ent in &entries {
                     if ent.started_by == "external" {
                         continue;
                     }
-                    let port = read_workspace_api_port(&ent.workspace_id);
-                    let _ = stop_service_pid_entry(ent, port);
+                    if is_pid_running(ent.pid) {
+                        let _ = kill_pid(ent.pid);
+                    }
+                    let _ = fs::remove_file(std::path::PathBuf::from(&ent.pid_file));
+                    remove_heartbeat_file(&ent.workspace_id);
                 }
                 kill_openakita_orphans();
             }
@@ -3264,6 +3276,7 @@ fn diagnose_via_backend_api(port: u16) -> Option<PythonDiagnostic> {
 
     let client = reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(6))
+        .no_proxy()
         .build()
         .ok()?;
 
@@ -4070,6 +4083,67 @@ async fn fetch_pypi_versions(package: String, index_url: Option<String>) -> Resu
         });
 
         Ok(serde_json::to_string(&versions).unwrap_or_else(|_| "[]".into()))
+    })
+    .await
+}
+
+/// 本地后端 HTTP 请求 — 绕过系统代理直连 127.0.0.1。
+///
+/// 代理软件（Clash / V2Ray 等）运行时会设置系统代理，macOS WebKit WebView
+/// 的 fetch() 遵守系统代理设置，导致对 127.0.0.1 的请求被路由到代理服务器
+/// 而非直连本地后端。此命令使用 reqwest + no_proxy() 从 Rust 侧发起请求，
+/// 完全绕过系统代理。
+///
+/// 前端应将所有 `fetch("http://127.0.0.1:18900/...")` 替换为调用此命令。
+///
+/// Returns `{ status, headers, body }` as JSON string.
+#[tauri::command]
+async fn local_api_request(
+    path: String,
+    method: Option<String>,
+    body: Option<String>,
+    timeout_secs: Option<u64>,
+    port: Option<u16>,
+) -> Result<String, String> {
+    spawn_blocking_result(move || {
+        let effective_port = port.unwrap_or(18900);
+        let url = format!("http://127.0.0.1:{}{}", effective_port, path);
+        let timeout = timeout_secs.unwrap_or(30);
+        let client = reqwest::blocking::Client::builder()
+            .timeout(std::time::Duration::from_secs(timeout))
+            .no_proxy()
+            .build()
+            .map_err(|e| format!("HTTP client error: {e}"))?;
+
+        let m = method.as_deref().unwrap_or("GET").to_uppercase();
+        let mut req_builder = match m.as_str() {
+            "POST" => client.post(&url),
+            "PUT" => client.put(&url),
+            "DELETE" => client.delete(&url),
+            "PATCH" => client.patch(&url),
+            _ => client.get(&url),
+        };
+
+        if let Some(ref b) = body {
+            req_builder = req_builder
+                .header("Content-Type", "application/json")
+                .body(b.clone());
+        }
+
+        let resp = req_builder
+            .send()
+            .map_err(|e| format!("local API request failed ({}): {}", url, e))?;
+
+        let status = resp.status().as_u16();
+        let resp_body = resp
+            .text()
+            .map_err(|e| format!("read response body failed: {e}"))?;
+
+        Ok(serde_json::json!({
+            "status": status,
+            "body": resp_body,
+        })
+        .to_string())
     })
     .await
 }
