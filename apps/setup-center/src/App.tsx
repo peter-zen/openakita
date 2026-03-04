@@ -3736,7 +3736,23 @@ export function App() {
               <span className="statusCardLabel">{t("config.step.workspace")}</span>
             </div>
             <div className="statusCardValue">{currentWorkspaceId || "—"}</div>
-            <div className="statusCardSub">{ws?.path || ""}</div>
+            <div className="statusCardSub" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>{ws?.path || ""}</span>
+              {ws?.path && (
+                <button
+                  className="btnIconInline"
+                  title={t("status.openFolder")}
+                  onClick={async () => {
+                    const { openFileWithDefault } = await import("./platform");
+                    try { await openFileWithDefault(ws.path); } catch (e) { console.error(e); }
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Autostart (= desktop autostart + backend auto-launch) — desktop only */}
@@ -7635,7 +7651,7 @@ export function App() {
             await logout();
             setWebAuthed(false);
           } : undefined}
-          webAccessUrl={IS_TAURI && (serviceStatus?.running ?? false) ? `http://127.0.0.1:18900` : undefined}
+          webAccessUrl={IS_TAURI && (serviceStatus?.running ?? false) ? `http://127.0.0.1:18900/web` : undefined}
         />
 
         {/* ChatView 始终挂载，切走时隐藏以保留聊天记录 */}

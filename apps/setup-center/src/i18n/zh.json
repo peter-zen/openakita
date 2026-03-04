@@ -271,6 +271,7 @@
     "service": "后台服务",
     "autostart": "开机自启",
     "autostartHint": "开机时自动启动桌面终端并拉起后端服务",
+    "openFolder": "在文件管理器中打开",
     "autoUpdate": "自动更新",
     "autoUpdateHint": "自动检测新版本并在有可用更新时通知你",
     "on": "开启",

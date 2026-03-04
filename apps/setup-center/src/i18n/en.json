@@ -271,6 +271,7 @@
     "service": "Backend Service",
     "autostart": "Autostart",
     "autostartHint": "Auto-launch desktop app and backend service on boot",
+    "openFolder": "Open in file manager",
     "autoUpdate": "Auto Update",
     "autoUpdateHint": "Automatically check for new versions and notify you when available",
     "on": "On",

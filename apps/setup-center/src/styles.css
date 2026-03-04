@@ -1017,6 +1017,25 @@ button:disabled {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.btnIconInline {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.btnIconInline:hover {
+  color: var(--accent);
+  background: var(--hover);
+}
 .statusCardActions {
   margin-top: 6px;
   display: flex;
