@@ -16,6 +16,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ── CLI wheel 构建 + 安装验证 ──
+  python_wheel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build wheel
+        run: |
+          pip install build
+          python -m build --wheel
+
+      - name: Verify wheel installs correctly
+        run: |
+          python -m venv /tmp/test-venv
+          /tmp/test-venv/bin/pip install dist/*.whl
+          /tmp/test-venv/bin/openakita --help
+
+      - name: Verify extras install correctly
+        run: |
+          python -m venv /tmp/test-all
+          /tmp/test-all/bin/pip install "dist/openakita-*.whl[all]"
+          /tmp/test-all/bin/openakita --help
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-wheel
+          path: dist/*.whl
+          retention-days: 3
+
+  # ── Desktop 安装包构建（多平台矩阵） ──
   dryrun_build:
     strategy:
       fail-fast: false
