@@ -270,6 +270,7 @@ jobs:
           fi
           RESOURCE_DIR="apps/setup-center/src-tauri/resources"
           IDENTITY="${APPLE_SIGNING_IDENTITY}"
+          ENTITLEMENTS="apps/setup-center/src-tauri/Entitlements.plist"
 
           echo "Importing certificate to keychain..."
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
@@ -291,7 +292,7 @@ jobs:
               continue
             fi
             echo "  Signing: $bin"
-            codesign --force --options runtime --timestamp --sign "$IDENTITY" "$bin"
+            codesign --force --options runtime --timestamp --entitlements "$ENTITLEMENTS" --sign "$IDENTITY" "$bin"
           done
           echo "All embedded binaries signed."
 
@@ -404,6 +405,7 @@ jobs:
           fi
 
           IDENTITY="${APPLE_SIGNING_IDENTITY}"
+          ENTITLEMENTS="apps/setup-center/src-tauri/Entitlements.plist"
           for app in "${APPS[@]}"; do
             FRAMEWORK_DIR="${app}/Contents/Resources/resources/openakita-server/_internal/Python.framework"
             if [ -d "${FRAMEWORK_DIR}" ]; then
@@ -451,7 +453,7 @@ jobs:
                     continue
                   fi
                   echo "Signing Python.app executable: ${pybin}"
-                  codesign --force --options runtime --timestamp --sign "${IDENTITY}" "${REAL_PYBIN}"
+                  codesign --force --options runtime --timestamp --entitlements "${ENTITLEMENTS}" --sign "${IDENTITY}" "${REAL_PYBIN}"
                   printf '%s\n' "${REAL_PYBIN}" >> "${SIGNED_REALPATHS_FILE}"
                 fi
               done
@@ -467,7 +469,7 @@ jobs:
                     continue
                   fi
                   echo "Signing Python.app bundle: ${pyapp}"
-                  codesign --force --options runtime --timestamp --sign "${IDENTITY}" "${REAL_PYAPP}"
+                  codesign --force --options runtime --timestamp --entitlements "${ENTITLEMENTS}" --sign "${IDENTITY}" "${REAL_PYAPP}"
                   printf '%s\n' "${REAL_PYAPP}" >> "${SIGNED_REALPATHS_FILE}"
                 fi
               done
@@ -485,7 +487,7 @@ jobs:
                     continue
                   fi
                   echo "Signing framework version binary: ${fwbin}"
-                  codesign --force --options runtime --timestamp --sign "${IDENTITY}" "${REAL_FWBIN}"
+                  codesign --force --options runtime --timestamp --entitlements "${ENTITLEMENTS}" --sign "${IDENTITY}" "${REAL_FWBIN}"
                   printf '%s\n' "${REAL_FWBIN}" >> "${SIGNED_REALPATHS_FILE}"
                 fi
               done
@@ -494,7 +496,7 @@ jobs:
             fi
 
             echo "Signing app bundle root: ${app}"
-            codesign --force --options runtime --timestamp --sign "${IDENTITY}" "${app}"
+            codesign --force --options runtime --timestamp --entitlements "${ENTITLEMENTS}" --sign "${IDENTITY}" "${app}"
             echo "Verifying app signature (deep): ${app}"
             codesign --verify --deep --strict --verbose=2 "${app}"
           done
