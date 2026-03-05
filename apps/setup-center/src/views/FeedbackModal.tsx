@@ -60,6 +60,7 @@ export function FeedbackModal({ open, onClose, apiBase, initialMode = "bug" }: F
     if (open) {
       setMode(initialMode);
       setSubmitResult(null);
+      setDownloading(false);
     }
   }, [open, initialMode]);
 
