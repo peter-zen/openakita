@@ -1230,8 +1230,7 @@ class MessageGateway:
 
     def _get_group_response_mode(self, channel: str) -> GroupResponseMode:
         """获取群聊响应模式（Per-Bot 配置 > 全局配置 > 默认值）"""
-        from ..config import get_settings
-        settings = get_settings()
+        from ..config import settings
         raw = settings.group_response_mode
         try:
             return GroupResponseMode(raw)
@@ -2938,8 +2937,7 @@ class MessageGateway:
 
         # chain_push 开关守卫
         if not force:
-            from ..config import get_settings
-            _s = get_settings()
+            from ..config import settings as _s
             _push = session.get_metadata("chain_push")
             if _push is None:
                 _push = _s.im_chain_push
