@@ -2453,7 +2453,13 @@ export function App() {
           context_window: Number.isFinite(Number(e?.context_window)) ? Number(e?.context_window) : 200000,
           timeout: Number.isFinite(Number(e?.timeout)) ? Number(e?.timeout) : 180,
           capabilities: Array.isArray(e?.capabilities) ? e.capabilities.map((x: any) => String(x)) : [],
+          rpm_limit: Number.isFinite(Number(e?.rpm_limit)) ? Number(e?.rpm_limit) : 0,
           note: e?.note ? String(e.note) : null,
+          pricing_tiers: Array.isArray(e?.pricing_tiers) ? e.pricing_tiers.map((t: any) => ({
+            max_input: Number(t?.max_input ?? 0),
+            input_price: Number(t?.input_price ?? 0),
+            output_price: Number(t?.output_price ?? 0),
+          })) : undefined,
         }))
         .filter((e: any) => e.name);
       list.sort((a, b) => a.priority - b.priority);
