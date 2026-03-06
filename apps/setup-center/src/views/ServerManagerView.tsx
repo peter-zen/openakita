@@ -3,6 +3,7 @@
 
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { IS_CAPACITOR } from "../platform/detect";
 import logoUrl from "../assets/logo.png";
 import {
   getServers, addServer, updateServer, removeServer,
@@ -104,7 +105,9 @@ export function ServerManagerView({
     minHeight: "100vh", width: "100vw",
     background: "linear-gradient(135deg, var(--bg, #f8fafc) 0%, var(--panel, #e2e8f0) 100%)",
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    color: "var(--text, #334155)", padding: 24, boxSizing: "border-box",
+    color: "var(--text, #334155)", padding: 24,
+    paddingTop: IS_CAPACITOR ? "max(24px, env(safe-area-inset-top))" : 24,
+    boxSizing: "border-box",
   };
   const cardStyle: React.CSSProperties = {
     background: "var(--panel2, #fff)", borderRadius: 16,

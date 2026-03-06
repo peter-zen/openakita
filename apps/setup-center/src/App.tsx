@@ -7592,11 +7592,15 @@ export function App() {
     if (authChecking) {
       return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", color: "var(--text3, #94a3b8)" }}>Loading...</div>;
     }
-    return <LoginView apiBaseUrl={IS_CAPACITOR ? apiBaseUrl : ""} onLoginSuccess={() => {
-      installFetchInterceptor();
-      webInitDone.current = false;
-      setWebAuthed(true);
-    }} />;
+    return <LoginView
+      apiBaseUrl={IS_CAPACITOR ? apiBaseUrl : ""}
+      onLoginSuccess={() => {
+        installFetchInterceptor();
+        webInitDone.current = false;
+        setWebAuthed(true);
+      }}
+      onSwitchServer={IS_CAPACITOR ? () => setShowServerManager(true) : undefined}
+    />;
   }
 
   return (

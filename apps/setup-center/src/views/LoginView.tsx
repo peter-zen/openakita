@@ -3,14 +3,17 @@
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { login } from "../platform/auth";
+import { IS_CAPACITOR } from "../platform/detect";
 import logoUrl from "../assets/logo.png";
 
 export function LoginView({
   apiBaseUrl,
   onLoginSuccess,
+  onSwitchServer,
 }: {
   apiBaseUrl: string;
   onLoginSuccess: () => void;
+  onSwitchServer?: () => void;
 }) {
   const { t } = useTranslation();
   const [password, setPassword] = useState("");
@@ -31,14 +34,19 @@ export function LoginView({
     } else {
       const raw = (result.error || "").toLowerCase();
       if (raw.includes("abort") || raw.includes("timeout")) {
-        setError(t("login.failedTimeout", { defaultValue: "连接超时，请检查网络后重试" }));
-      } else if (raw.includes("failed to fetch") || raw.includes("networkerror") || raw.includes("fetch failed")) {
-        setError(t("login.failedNetwork", { defaultValue: "无法连接服务器，请检查地址和网络" }));
+        setError(t("login.failedTimeout", { defaultValue: "连接超时，请确认手机与电脑在同一 WiFi 下" }));
+      } else if (raw.includes("failed to fetch") || raw.includes("networkerror") || raw.includes("fetch failed") || raw.includes("network") || raw.includes("load failed")) {
+        const hint = IS_CAPACITOR
+          ? "无法连接服务器，请确认：\n1. 手机与电脑在同一 WiFi 下\n2. 桌面端已开启远程访问\n3. 服务器地址正确"
+          : "无法连接服务器，请检查地址和网络";
+        setError(hint);
       } else {
         setError(result.error || t("login.failed"));
       }
     }
   }, [password, apiBaseUrl, onLoginSuccess, t]);
+
+  const serverDisplay = apiBaseUrl ? apiBaseUrl.replace(/^https?:\/\//, "") : "";
 
   return (
     <div style={{
@@ -52,6 +60,7 @@ export function LoginView({
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       color: "var(--text, #334155)",
       padding: 32,
+      paddingTop: IS_CAPACITOR ? "max(32px, env(safe-area-inset-top))" : 32,
       boxSizing: "border-box",
     }}>
       <form
@@ -80,13 +89,25 @@ export function LoginView({
           OpenAkita Web
         </h2>
         <p style={{
-          margin: "0 0 24px",
+          margin: "0 0 20px",
           fontSize: 14,
           color: "var(--text3, #64748b)",
           lineHeight: 1.6,
         }}>
           {t("login.prompt")}
         </p>
+
+        {/* Server address display for Capacitor */}
+        {IS_CAPACITOR && serverDisplay && (
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            marginBottom: 16, padding: "6px 12px", borderRadius: 8,
+            background: "var(--bg, #f1f5f9)", fontSize: 12, color: "var(--text3, #64748b)",
+          }}>
+            <span style={{ opacity: 0.6 }}>🔗</span>
+            <span style={{ fontFamily: "monospace", wordBreak: "break-all" }}>{serverDisplay}</span>
+          </div>
+        )}
 
         {error && (
           <div style={{
@@ -97,6 +118,8 @@ export function LoginView({
             fontSize: 13,
             marginBottom: 16,
             textAlign: "left",
+            whiteSpace: "pre-line",
+            lineHeight: 1.6,
           }}>
             {error}
           </div>
@@ -150,6 +173,36 @@ export function LoginView({
         >
           {loading ? t("login.loggingIn") : t("login.submit")}
         </button>
+
+        {/* Switch server button for Capacitor */}
+        {onSwitchServer && (
+          <button
+            type="button"
+            onClick={onSwitchServer}
+            style={{
+              width: "100%",
+              marginTop: 12,
+              background: "none",
+              border: "1px solid var(--line, #e2e8f0)",
+              borderRadius: 10,
+              padding: "9px 0",
+              fontSize: 14,
+              color: "var(--text3, #64748b)",
+              cursor: "pointer",
+              transition: "border-color 0.15s, color 0.15s",
+            }}
+            onMouseEnter={(e) => {
+              (e.target as HTMLButtonElement).style.borderColor = "var(--primary, #0ea5e9)";
+              (e.target as HTMLButtonElement).style.color = "var(--primary, #0ea5e9)";
+            }}
+            onMouseLeave={(e) => {
+              (e.target as HTMLButtonElement).style.borderColor = "var(--line, #e2e8f0)";
+              (e.target as HTMLButtonElement).style.color = "var(--text3, #64748b)";
+            }}
+          >
+            {t("login.switchServer", { defaultValue: "切换 / 添加服务器" })}
+          </button>
+        )}
       </form>
 
       <p style={{
