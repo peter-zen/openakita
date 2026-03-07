@@ -490,15 +490,6 @@ class ReasoningEngine:
         _session_key = conversation_id or ""
         state = self._state.get_task_for_session(_session_key) if _session_key else self._state.current_task
 
-        if state and state.cancelled:
-            logger.info(
-                f"[ReAct] Task already cancelled before run() entry "
-                f"(reason={state.cancel_reason!r}). Returning immediately."
-            )
-            return await self._cancel_farewell(
-                messages, system_prompt, self._brain.model, state
-            )
-
         if not state or not state.is_active:
             state = self._state.begin_task(session_id=_session_key)
         elif state.status == TaskStatus.ACTING:
@@ -1406,15 +1397,6 @@ class ReasoningEngine:
 
         _session_key = conversation_id or ""
         state = self._state.get_task_for_session(_session_key) if _session_key else self._state.current_task
-
-        if state and state.cancelled:
-            logger.info(
-                f"[ReAct-Stream] Task already cancelled before reason_stream() entry "
-                f"(reason={state.cancel_reason!r}). Returning immediately."
-            )
-            yield {"type": "text_delta", "content": "✅ 好的，已停止当前任务。"}
-            yield {"type": "done"}
-            return
 
         if not state or not state.is_active:
             state = self._state.begin_task(session_id=_session_key)

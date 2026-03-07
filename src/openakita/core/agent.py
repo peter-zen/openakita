@@ -3936,12 +3936,22 @@ create_agent(name="名称", description="描述", skills=["技能"], custom_prom
         self.agent_state.current_session = None
         self._current_task_monitor = None
         # 重置任务状态，避免已取消/已完成的任务泄漏到下一次会话
+        # 注意：task 的 key 可能是 conversation_id 而非 session_id，两者都要尝试
         _sid = self._current_session_id
-        _task = (
-            self.agent_state.get_task_for_session(_sid) if _sid and self.agent_state else None
-        ) or (self.agent_state.current_task if self.agent_state else None)
-        if _task and not _task.is_active:
-            self.agent_state.reset_task(session_id=_sid)
+        _conv_id = self._current_conversation_id
+        _cleaned = set()
+        for _key in (_sid, _conv_id):
+            if not _key or _key in _cleaned:
+                continue
+            _task = self.agent_state.get_task_for_session(_key) if self.agent_state else None
+            if _task and not _task.is_active:
+                self.agent_state.reset_task(session_id=_key)
+                _cleaned.add(_key)
+        if not _cleaned and self.agent_state:
+            _ct = self.agent_state.current_task
+            if _ct and not _ct.is_active:
+                _ct_key = _ct.session_id or _ct.task_id
+                self.agent_state.reset_task(session_id=_ct_key)
 
         # Clean up task-local session references to prevent dict growth
         if _sid:
@@ -4001,24 +4011,40 @@ create_agent(name="名称", description="描述", skills=["技能"], custom_prom
             logger.info(f"[StopTask] User requested to stop (session={session_id}): {message}")
             return "✅ 好的，已停止当前任务。有什么其他需要帮助的吗？"
 
+        # 解析 conversation_id（提前，以便清理时使用正确的 key）
+        self._current_session_id = session_id
+        conversation_id = self._resolve_conversation_id(session, session_id)
+        self._current_conversation_id = conversation_id
+
         # 清理上一轮残留的任务状态（按 session 隔离）
-        _prev_task = (
-            self.agent_state.get_task_for_session(session_id) if session_id and self.agent_state else None
-        ) or (self.agent_state.current_task if self.agent_state else None)
+        # 注意：task key 可能是 conversation_id 而非 session_id，两者都要尝试
+        _prev_task = None
+        _reset_key = session_id
+        for _try_key in (session_id, conversation_id):
+            if _try_key and self.agent_state:
+                _prev_task = self.agent_state.get_task_for_session(_try_key)
+                if _prev_task:
+                    _reset_key = _try_key
+                    break
+        if not _prev_task and self.agent_state:
+            _prev_task = self.agent_state.current_task
+            if _prev_task:
+                _reset_key = _prev_task.session_id or _prev_task.task_id
         if _prev_task:
             if _prev_task.cancelled or not _prev_task.is_active:
                 logger.info(
                     f"[Session:{session_id}] Resetting stale task "
-                    f"(cancelled={_prev_task.cancelled}, status={_prev_task.status.value})"
+                    f"(cancelled={_prev_task.cancelled}, status={_prev_task.status.value}, "
+                    f"reset_key={_reset_key!r})"
                 )
-                self.agent_state.reset_task(session_id=session_id)
+                self.agent_state.reset_task(session_id=_reset_key)
             else:
                 _prev_task.clear_skip()
                 await _prev_task.drain_user_inserts()
 
-        self._current_session_id = session_id
-        conversation_id = self._resolve_conversation_id(session, session_id)
-        self._current_conversation_id = conversation_id
+        # 清除上一轮残留的 pending_cancels（disconnect watcher 可能在清理后写入）
+        self._pending_cancels.pop(session_id, None) if session_id else None
+        self._pending_cancels.pop(conversation_id, None) if conversation_id else None
 
         # 用户主动发新消息 → 无条件清除所有端点冷却期，不让上一轮的错误阻塞本轮
         llm_client = getattr(self.brain, "_llm_client", None)
@@ -4027,7 +4053,7 @@ create_agent(name="名称", description="描述", skills=["技能"], custom_prom
 
         im_tokens = None
         try:
-            # 准备阶段前检查
+            # 准备阶段前检查：仅捕获 prepare 开始前一刻的取消信号
             if self._is_session_cancelled(session_id):
                 self._consume_pending_cancel(session_id)
                 logger.info(f"[Session:{session_id}] Cancelled before prepare, returning immediately")
@@ -4160,25 +4186,40 @@ create_agent(name="名称", description="描述", skills=["技能"], custom_prom
             yield {"type": "done"}
             return
 
+        # 解析 conversation_id（提前，以便清理时使用正确的 key）
+        self._current_session_id = session_id
+        conversation_id = self._resolve_conversation_id(session, session_id)
+        self._current_conversation_id = conversation_id
+
         # 清理上一轮残留的任务状态（按 session 隔离）
-        _prev_task = (
-            self.agent_state.get_task_for_session(session_id) if session_id and self.agent_state else None
-        ) or (self.agent_state.current_task if self.agent_state else None)
+        # 注意：task key 可能是 conversation_id 而非 session_id，两者都要尝试
+        _prev_task = None
+        _reset_key = session_id
+        for _try_key in (session_id, conversation_id):
+            if _try_key and self.agent_state:
+                _prev_task = self.agent_state.get_task_for_session(_try_key)
+                if _prev_task:
+                    _reset_key = _try_key
+                    break
+        if not _prev_task and self.agent_state:
+            _prev_task = self.agent_state.current_task
+            if _prev_task:
+                _reset_key = _prev_task.session_id or _prev_task.task_id
         if _prev_task:
             if _prev_task.cancelled or not _prev_task.is_active:
                 logger.info(
                     f"[Session:{session_id}] Resetting stale task "
-                    f"(cancelled={_prev_task.cancelled}, status={_prev_task.status.value})"
+                    f"(cancelled={_prev_task.cancelled}, status={_prev_task.status.value}, "
+                    f"reset_key={_reset_key!r})"
                 )
-                self.agent_state.reset_task(session_id=session_id)
+                self.agent_state.reset_task(session_id=_reset_key)
             else:
                 _prev_task.clear_skip()
                 await _prev_task.drain_user_inserts()
 
-        # 解析 conversation_id
-        self._current_session_id = session_id
-        conversation_id = self._resolve_conversation_id(session, session_id)
-        self._current_conversation_id = conversation_id
+        # 清除上一轮残留的 pending_cancels（disconnect watcher 可能在清理后写入）
+        self._pending_cancels.pop(session_id, None) if session_id else None
+        self._pending_cancels.pop(conversation_id, None) if conversation_id else None
 
         # 用户主动发新消息 → 无条件清除所有端点冷却期
         llm_client = getattr(self.brain, "_llm_client", None)
@@ -6098,22 +6139,13 @@ NEXT: 建议的下一步（如有）"""
         logger.info(f"[StopTask] Task cancellation completed: {reason}")
 
     def _is_session_cancelled(self, session_id: str | None = None) -> bool:
-        """检查指定 session 是否有待处理的取消信号。
+        """检查指定 session 是否有 prepare 阶段写入的挂起取消信号。
 
-        检查两个来源：
-        1. 当前 task 的 cancelled 标志
-        2. _pending_cancels 中的挂起取消（task 不存在时由 cancel_current_task 写入）
+        仅检查 _pending_cancels（task 不存在时由 cancel_current_task 写入）。
+        不检查 task.cancelled，因为那可能是上一轮残留的旧 task，会导致误判。
+        实时取消由 cancel_event 机制在 reason_stream/run 内部处理。
         """
-        if session_id and session_id in self._pending_cancels:
-            return True
-        if not self.agent_state:
-            return False
-        task = (
-            self.agent_state.get_task_for_session(session_id)
-            if session_id
-            else self.agent_state.current_task
-        )
-        return bool(task and task.cancelled)
+        return bool(session_id and session_id in self._pending_cancels)
 
     def _consume_pending_cancel(self, session_id: str | None = None) -> str | None:
         """消费并返回挂起的取消原因，如果没有则返回 None。"""
