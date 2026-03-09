@@ -604,7 +604,15 @@
     "imGoToBotConfig": "前往 Bot 管理",
     "imConfiguredBots": "已配置的 Bot",
     "imNoBots": "暂无 Bot，前往消息通道添加",
+    "imNoBotsOnboarding": "点击下方「添加 Bot」开始配置",
     "imAddBot": "添加 Bot",
+    "imHintOnboarding": "为需要的通道添加 Bot，填写凭据后点击保存。可添加多个 Bot，服务启动后自动注册",
+    "imInlineEdit": "编辑",
+    "imInlineDelete": "删除",
+    "imInlineSave": "保存",
+    "imInlineCancel": "取消",
+    "imInlineAddTitle": "添加 Bot",
+    "imInlineEditTitle": "编辑 Bot",
     "skipIm": "跳过，直接完成",
     "multiAgentMode": "多Agent模式",
     "multiAgentBeta": "Beta",
@@ -995,6 +1003,7 @@
       "title": "终端命令与系统设置",
       "desc": "注册命令行工具，配置开机自启等系统选项。"
     },
+    "registerBots": "注册 IM Bot ({{count}} 个)",
     "autostart": {
       "label": "开机自启",
       "desc": "开机时自动启动桌面终端并拉起后端服务，无需手动打开",

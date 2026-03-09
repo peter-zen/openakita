@@ -11,6 +11,9 @@ import { safeFetch } from "../providers";
 import { logger } from "../platform";
 import { IS_WEB, onWsEvent } from "../platform";
 
+import type { IMBot } from "./im-shared";
+import { BOT_TYPES, BOT_TYPE_LABELS, CREDENTIAL_FIELDS, EMPTY_BOT } from "./im-shared";
+
 // ─── Types ──────────────────────────────────────────────────────────────
 
 type IMChannel = {
@@ -51,15 +54,6 @@ type IMMessage = {
   chain_summary?: ChainSummaryItem[] | null;
 };
 
-type IMBot = {
-  id: string;
-  type: string;
-  name: string;
-  agent_profile_id: string;
-  enabled: boolean;
-  credentials: Record<string, unknown>;
-};
-
 type AgentProfile = {
   id: string;
   name: string;
@@ -67,63 +61,6 @@ type AgentProfile = {
 };
 
 const DEFAULT_API = "http://127.0.0.1:18900";
-
-const BOT_TYPES = ["feishu", "telegram", "dingtalk", "wework", "onebot", "qqbot"] as const;
-
-const BOT_TYPE_LABELS: Record<string, string> = {
-  feishu: "飞书",
-  telegram: "Telegram",
-  dingtalk: "钉钉",
-  wework: "企业微信",
-  onebot: "OneBot (QQ)",
-  qqbot: "QQ 官方机器人",
-};
-
-const CREDENTIAL_FIELDS: Record<string, { key: string; label: string; secret?: boolean }[]> = {
-  feishu: [
-    { key: "app_id", label: "App ID" },
-    { key: "app_secret", label: "App Secret", secret: true },
-  ],
-  telegram: [
-    { key: "bot_token", label: "Bot Token", secret: true },
-    { key: "webhook_url", label: "Webhook URL" },
-    { key: "proxy", label: "Proxy (http/socks5)" },
-    { key: "pairing_code", label: "Pairing Code" },
-    { key: "require_pairing", label: "Require Pairing (true/false)" },
-  ],
-  dingtalk: [
-    { key: "client_id", label: "Client ID / App Key" },
-    { key: "client_secret", label: "Client Secret / App Secret", secret: true },
-  ],
-  wework: [
-    { key: "corp_id", label: "Corp ID" },
-    { key: "token", label: "Token", secret: true },
-    { key: "encoding_aes_key", label: "Encoding AES Key", secret: true },
-    { key: "callback_port", label: "Callback Port" },
-    { key: "callback_host", label: "Callback Host" },
-  ],
-  onebot: [
-    { key: "ws_url", label: "WebSocket URL" },
-    { key: "access_token", label: "Access Token", secret: true },
-  ],
-  qqbot: [
-    { key: "app_id", label: "App ID" },
-    { key: "app_secret", label: "App Secret", secret: true },
-    { key: "sandbox", label: "Sandbox (true/false)" },
-    { key: "mode", label: "Mode (websocket/webhook)" },
-    { key: "webhook_port", label: "Webhook Port" },
-    { key: "webhook_path", label: "Webhook Path" },
-  ],
-};
-
-const EMPTY_BOT: IMBot = {
-  id: "",
-  type: "feishu",
-  name: "",
-  agent_profile_id: "default",
-  enabled: true,
-  credentials: {},
-};
 
 // ─── Main Component ─────────────────────────────────────────────────────
 

@@ -604,7 +604,15 @@
     "imGoToBotConfig": "Bot Management",
     "imConfiguredBots": "Configured Bots",
     "imNoBots": "No bots yet, go to Channels to add",
+    "imNoBotsOnboarding": "Click \"Add Bot\" below to get started",
     "imAddBot": "Add Bot",
+    "imHintOnboarding": "Add Bots for the channels you need. Fill in credentials and save. You can add multiple Bots — they will be registered automatically when the service starts",
+    "imInlineEdit": "Edit",
+    "imInlineDelete": "Delete",
+    "imInlineSave": "Save",
+    "imInlineCancel": "Cancel",
+    "imInlineAddTitle": "Add Bot",
+    "imInlineEditTitle": "Edit Bot",
     "skipIm": "Skip, finish now",
     "multiAgentMode": "Multi-Agent Mode",
     "multiAgentBeta": "Beta",
@@ -995,6 +1003,7 @@
       "title": "CLI & System Settings",
       "desc": "Register command-line tools and configure system options like auto-start."
     },
+    "registerBots": "Register IM Bots ({{count}})",
     "autostart": {
       "label": "Launch at Startup",
       "desc": "Automatically start the desktop app and backend service when you log in",
