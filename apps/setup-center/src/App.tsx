@@ -209,9 +209,19 @@ export function App() {
 
   useEffect(() => {
     const onResize = () => {
-      const mobile = window.innerWidth <= 768;
+      const w = window.innerWidth;
+      const mobile = w <= 768;
       setIsMobile(mobile);
       if (!mobile) setMobileSidebarOpen(false);
+      if (!mobile && w <= 980) {
+        if (!sidebarAutoCollapsed.current) {
+          sidebarAutoCollapsed.current = true;
+          setSidebarCollapsed(true);
+        }
+      } else if (w > 980 && sidebarAutoCollapsed.current) {
+        sidebarAutoCollapsed.current = false;
+        setSidebarCollapsed(false);
+      }
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
@@ -233,6 +243,7 @@ export function App() {
   const [appInitializing, setAppInitializing] = useState(!(IS_WEB || IS_CAPACITOR));
   const [configExpanded, setConfigExpanded] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const sidebarAutoCollapsed = useRef(false);
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth <= 768);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [bugReportOpen, setBugReportOpen] = useState(false);

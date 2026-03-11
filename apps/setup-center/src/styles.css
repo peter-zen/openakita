@@ -202,7 +202,14 @@ a:hover {
 
 .sidebarNav {
   padding: 8px 8px 4px 8px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
+.sidebarNav::-webkit-scrollbar { width: 4px; }
+.sidebarNav::-webkit-scrollbar-track { background: transparent; }
+.sidebarNav::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
+.sidebarNav::-webkit-scrollbar-thumb:hover { background: var(--muted2); }
 
 .navItem {
   display: flex;
@@ -234,7 +241,7 @@ a:hover {
 
 .configSection {
   border-top: 1px solid var(--line);
-  margin-top: auto;
+  flex-shrink: 0;
 }
 
 .configHeader {
@@ -2299,10 +2306,6 @@ button:disabled {
 }
 
 @media (max-width: 980px) {
-  .appShell {
-    grid-template-columns: 1fr;
-    height: auto;
-  }
   .imView {
     grid-template-columns: 1fr;
   }
@@ -3063,22 +3066,24 @@ button:disabled {
 }
 
 .convSidebarHeader {
-  padding: 10px 12px 8px;
+  padding: 8px 10px;
   border-bottom: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .convSearchBox {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 8px;
-  border-radius: 8px;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 7px;
   background: var(--bg);
   border: 1px solid var(--line);
   transition: border-color 0.15s;
+  height: 30px;
+  box-sizing: border-box;
 }
 .convSearchBox:focus-within {
   border-color: var(--brand);
@@ -3090,8 +3095,17 @@ button:disabled {
   background: transparent;
   color: inherit;
   font-size: 12px;
-  outline: none;
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-appearance: none;
   min-width: 0;
+  padding: 0;
+  height: 100%;
+}
+.convSearchInput:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none;
 }
 .convSearchInput::placeholder {
   opacity: 0.4;
@@ -3110,16 +3124,34 @@ button:disabled {
 }
 .convSearchClear:hover { opacity: 0.8; }
 
+.convPinBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.convPinBtn:hover { background: rgba(14, 165, 233, 0.08); }
+
 .convNewBtn {
   width: 100%;
-  padding: 6px 0;
-  border-radius: 8px;
+  padding: 5px 0;
+  border-radius: 7px;
   border: 1px solid var(--line);
   background: var(--bg);
   color: inherit;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+  height: 30px;
+  box-sizing: border-box;
   transition: background 0.12s, border-color 0.12s;
 }
 .convNewBtn:hover {
