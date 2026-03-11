@@ -142,7 +142,9 @@ def load_endpoints_config(
         for ep_data in data.get(key, []):
             try:
                 endpoint = EndpointConfig.from_dict(ep_data)
-                # 验证 API Key 环境变量存在
+                if not endpoint.enabled:
+                    logger.info(f"Skipping disabled endpoint '{endpoint.name}'")
+                    continue
                 if endpoint.api_key_env:
                     api_key = os.environ.get(endpoint.api_key_env)
                     if not api_key:

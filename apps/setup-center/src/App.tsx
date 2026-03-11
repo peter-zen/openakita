@@ -29,7 +29,7 @@ import type {
 import {
   IconRefresh, IconCheck, IconCheckCircle, IconX, IconXCircle,
   IconChevronDown, IconChevronRight, IconChevronUp, IconGlobe,
-  IconEdit, IconTrash, IconEye, IconEyeOff, IconInfo, IconClipboard,
+  IconEdit, IconTrash, IconEye, IconEyeOff, IconInfo, IconClipboard, IconPower,
   DotGreen, DotGray, DotYellow, DotRed,
   LogoTelegram, LogoFeishu, LogoWework, LogoDingtalk, LogoQQ,
 } from "./icons";
@@ -550,7 +550,7 @@ export function App() {
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [endpointSummary, setEndpointSummary] = useState<
-    { name: string; provider: string; apiType: string; baseUrl: string; model: string; keyEnv: string; keyPresent: boolean }[]
+    { name: string; provider: string; apiType: string; baseUrl: string; model: string; keyEnv: string; keyPresent: boolean; enabled?: boolean }[]
   >([]);
   const [skillSummary, setSkillSummary] = useState<{ count: number; systemCount: number; externalCount: number } | null>(null);
   const [skillsDetail, setSkillsDetail] = useState<
@@ -698,6 +698,7 @@ export function App() {
                 context_window: Number(e?.context_window || 200000),
                 timeout: Number(e?.timeout || 180),
                 capabilities: Array.isArray(e?.capabilities) ? e.capabilities.map((x: any) => String(x)) : [],
+                enabled: e?.enabled !== false,
               })));
             }
           } catch { /* ignore */ }
@@ -1727,6 +1728,7 @@ export function App() {
             input_price: Number.isFinite(Number(t?.input_price)) ? Number(t.input_price) : 0,
             output_price: Number.isFinite(Number(t?.output_price)) ? Number(t.output_price) : 0,
           })) : undefined,
+          enabled: e?.enabled !== false,
         }))
         .filter((e: any) => e.name);
       list.sort((a, b) => a.priority - b.priority);
@@ -1755,6 +1757,7 @@ export function App() {
           timeout: Number.isFinite(Number(e.timeout)) ? Number(e.timeout) : 30,
           capabilities: Array.isArray(e.capabilities) ? e.capabilities.map((x: any) => String(x)) : ["text"],
           note: e.note ? String(e.note) : null,
+          enabled: e?.enabled !== false,
         }))
         .sort((a: EndpointDraft, b: EndpointDraft) => a.priority - b.priority);
       setSavedCompilerEndpoints(compilerEps);
@@ -1775,6 +1778,7 @@ export function App() {
           timeout: Number.isFinite(Number(e.timeout)) ? Number(e.timeout) : 60,
           capabilities: Array.isArray(e.capabilities) ? e.capabilities.map((x: any) => String(x)) : ["text"],
           note: e.note ? String(e.note) : null,
+          enabled: e?.enabled !== false,
         }))
         .sort((a: EndpointDraft, b: EndpointDraft) => a.priority - b.priority);
       setSavedSttEndpoints(sttEps);
@@ -2872,6 +2876,26 @@ export function App() {
     }
   }
 
+  async function doToggleEndpointEnabled(name: string, endpointType: "endpoints" | "compiler_endpoints" | "stt_endpoints" = "endpoints") {
+    if (!currentWorkspaceId && dataMode !== "remote") return;
+    try {
+      const raw = await readWorkspaceFile("data/llm_endpoints.json");
+      const base = raw ? JSON.parse(raw) : { endpoints: [], settings: {} };
+      const eps = Array.isArray(base[endpointType]) ? base[endpointType] : [];
+      for (const ep of eps) {
+        if (String(ep?.name || "") === name) {
+          ep.enabled = ep.enabled === false ? true : false;
+          break;
+        }
+      }
+      base[endpointType] = eps;
+      await writeWorkspaceFile("data/llm_endpoints.json", JSON.stringify(base, null, 2) + "\n");
+      loadSavedEndpoints().catch(() => {});
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
   async function saveEnvKeys(keys: string[]) {
     const entries: Record<string, string> = {};
     for (const k of keys) {
@@ -3163,6 +3187,7 @@ export function App() {
                 model: String(e?.model || ""),
                 keyEnv,
                 keyPresent,
+                enabled: e?.enabled !== false,
               };
             })
             .filter((e: any) => e.name);
@@ -3188,6 +3213,7 @@ export function App() {
               model: String(m?.model || ""),
               keyEnv: "",
               keyPresent: m?.has_api_key === true,
+              enabled: m?.enabled !== false,
             })).filter((e: any) => e.name);
             if (list.length > 0) {
               setEndpointSummary(list);
@@ -3218,6 +3244,7 @@ export function App() {
                 name: String(e?.name || ""), provider: String(e?.provider || ""),
                 apiType: String(e?.api_type || ""), baseUrl: String(e?.base_url || ""),
                 model: String(e?.model || ""), keyEnv, keyPresent,
+                enabled: e?.enabled !== false,
               };
             }).filter((e: any) => e.name);
             if (list.length > 0) {
@@ -3312,6 +3339,7 @@ export function App() {
             model: String(e?.model || ""),
             keyEnv,
             keyPresent,
+            enabled: e?.enabled !== false,
           };
         })
         .filter((e: any) => e.name);
@@ -4044,8 +4072,11 @@ export function App() {
                   ? h.status === "healthy" ? (h.latencyMs != null ? h.latencyMs + "ms" : "OK") : fullError.slice(0, 30) + (fullError.length > 30 ? "…" : "")
                   : e.keyPresent ? "—" : t("status.keyMissing");
                 return (
-                  <div key={e.name} className="epTableRow">
-                    <span className="epTableName">{e.name}</span>
+                  <div key={e.name} className="epTableRow" style={e.enabled === false ? { opacity: 0.45 } : undefined}>
+                    <span className="epTableName">
+                      {e.name}
+                      {e.enabled === false && <span style={{ marginLeft: 6, color: "var(--muted)", fontSize: 10, fontWeight: 700 }}>{t("llm.disabled")}</span>}
+                    </span>
                     <span className="epTableModel">{e.model}</span>
                     <span>{e.keyPresent ? <DotGreen /> : <DotGray />}</span>
                     <span style={{ display: "flex", alignItems: "center", gap: 4 }} title={fullError ? (t("status.clickToCopy", "点击复制") + ": " + fullError) : undefined}>
@@ -4191,15 +4222,17 @@ export function App() {
                 <span></span>
               </div>
               {savedEndpoints.map((e) => (
-                <div key={e.name} className="epTableRow">
+                <div key={e.name} className="epTableRow" style={e.enabled === false ? { opacity: 0.45 } : undefined}>
                   <span className="epTableName">
                     {e.name}
-                    {savedEndpoints[0]?.name === e.name && <span style={{ marginLeft: 6, color: "var(--brand)", fontSize: 10, fontWeight: 800 }}>{t("llm.primary")}</span>}
+                    {savedEndpoints[0]?.name === e.name && e.enabled !== false && <span style={{ marginLeft: 6, color: "var(--brand)", fontSize: 10, fontWeight: 800 }}>{t("llm.primary")}</span>}
+                    {e.enabled === false && <span style={{ marginLeft: 6, color: "var(--muted)", fontSize: 10, fontWeight: 700 }}>{t("llm.disabled")}</span>}
                   </span>
                   <span className="epTableModel">{e.model}</span>
                   <span>{(envDraft[e.api_key_env] || "").trim() ? <DotGreen /> : <DotGray />}</span>
                   <span style={{ fontSize: 12 }}>{e.priority}</span>
                   <span style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                    <button className={`btnIcon${e.enabled === false ? "" : " btnIconActive"}`} onClick={() => doToggleEndpointEnabled(e.name)} disabled={!!busy} title={e.enabled === false ? t("llm.enable") : t("llm.disable")}><IconPower size={14} /></button>
                     {savedEndpoints[0]?.name !== e.name && <button className="btnIcon" onClick={() => doSetPrimaryEndpoint(e.name)} disabled={!!busy} title={t("llm.setPrimary")}><IconChevronUp size={14} /></button>}
                     <button className="btnIcon" onClick={() => doStartEditEndpoint(e.name)} disabled={!!busy} title={t("llm.edit")}><IconEdit size={14} /></button>
                     <button className="btnIcon btnIconDanger" onClick={() => askConfirm(`${t("common.confirmDeleteMsg")} "${e.name}"?`, () => doDeleteEndpoint(e.name))} disabled={!!busy} title={t("common.delete")}><IconTrash size={14} /></button>
@@ -4226,12 +4259,16 @@ export function App() {
           ) : (
             <div style={{ display: "grid", gap: 6 }}>
               {savedCompilerEndpoints.map((e) => (
-                <div key={e.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
+                <div key={e.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid rgba(0,0,0,0.04)", ...(e.enabled === false ? { opacity: 0.45 } : {}) }}>
                   <div>
                     <span style={{ fontWeight: 700, fontSize: 13 }}>{e.name}</span>
                     <span style={{ color: "var(--muted)", fontSize: 11, marginLeft: 8 }}>{e.model} · {e.provider}</span>
+                    {e.enabled === false && <span style={{ marginLeft: 6, color: "var(--muted)", fontSize: 10, fontWeight: 700 }}>{t("llm.disabled")}</span>}
                   </div>
-                  <button className="btnIcon btnIconDanger" onClick={() => askConfirm(`${t("common.confirmDeleteMsg")} "${e.name}"?`, () => doDeleteCompilerEndpoint(e.name))} disabled={!!busy} title={t("common.delete")}><IconTrash size={14} /></button>
+                  <span style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                    <button className={`btnIcon${e.enabled === false ? "" : " btnIconActive"}`} onClick={() => doToggleEndpointEnabled(e.name, "compiler_endpoints")} disabled={!!busy} title={e.enabled === false ? t("llm.enable") : t("llm.disable")}><IconPower size={14} /></button>
+                    <button className="btnIcon btnIconDanger" onClick={() => askConfirm(`${t("common.confirmDeleteMsg")} "${e.name}"?`, () => doDeleteCompilerEndpoint(e.name))} disabled={!!busy} title={t("common.delete")}><IconTrash size={14} /></button>
+                  </span>
                 </div>
               ))}
             </div>
@@ -4254,12 +4291,16 @@ export function App() {
           ) : (
             <div style={{ display: "grid", gap: 6 }}>
               {savedSttEndpoints.map((e) => (
-                <div key={e.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
+                <div key={e.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid rgba(0,0,0,0.04)", ...(e.enabled === false ? { opacity: 0.45 } : {}) }}>
                   <div>
                     <span style={{ fontWeight: 700, fontSize: 13 }}>{e.name}</span>
                     <span style={{ color: "var(--muted)", fontSize: 11, marginLeft: 8 }}>{e.model} · {e.provider}</span>
+                    {e.enabled === false && <span style={{ marginLeft: 6, color: "var(--muted)", fontSize: 10, fontWeight: 700 }}>{t("llm.disabled")}</span>}
                   </div>
-                  <button className="btnIcon btnIconDanger" onClick={() => askConfirm(`${t("common.confirmDeleteMsg")} "${e.name}"?`, () => doDeleteSttEndpoint(e.name))} disabled={!!busy} title={t("common.delete")}><IconTrash size={14} /></button>
+                  <span style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                    <button className={`btnIcon${e.enabled === false ? "" : " btnIconActive"}`} onClick={() => doToggleEndpointEnabled(e.name, "stt_endpoints")} disabled={!!busy} title={e.enabled === false ? t("llm.enable") : t("llm.disable")}><IconPower size={14} /></button>
+                    <button className="btnIcon btnIconDanger" onClick={() => askConfirm(`${t("common.confirmDeleteMsg")} "${e.name}"?`, () => doDeleteSttEndpoint(e.name))} disabled={!!busy} title={t("common.delete")}><IconTrash size={14} /></button>
+                  </span>
                 </div>
               ))}
             </div>
@@ -6581,31 +6622,33 @@ export function App() {
     );
   }
 
-  // 构造端点摘要（供 ChatView 使用）
+  // 构造端点摘要（供 ChatView 使用，仅启用的端点）
   const chatEndpoints: EndpointSummaryType[] = useMemo(() =>
-    endpointSummary.map((e) => {
-      const h = endpointHealth[e.name];
-      return {
-        name: e.name,
-        provider: e.provider,
-        apiType: e.apiType,
-        baseUrl: e.baseUrl,
-        model: e.model,
-        keyEnv: e.keyEnv,
-        keyPresent: e.keyPresent,
-        health: h ? {
+    endpointSummary
+      .filter((e) => e.enabled !== false)
+      .map((e) => {
+        const h = endpointHealth[e.name];
+        return {
           name: e.name,
-          status: h.status as "healthy" | "degraded" | "unhealthy" | "unknown",
-          latencyMs: h.latencyMs,
-          error: h.error,
-          errorCategory: h.errorCategory,
-          consecutiveFailures: h.consecutiveFailures,
-          cooldownRemaining: h.cooldownRemaining,
-          isExtendedCooldown: h.isExtendedCooldown,
-          lastCheckedAt: h.lastCheckedAt,
-        } : undefined,
-      };
-    }),
+          provider: e.provider,
+          apiType: e.apiType,
+          baseUrl: e.baseUrl,
+          model: e.model,
+          keyEnv: e.keyEnv,
+          keyPresent: e.keyPresent,
+          health: h ? {
+            name: e.name,
+            status: h.status as "healthy" | "degraded" | "unhealthy" | "unknown",
+            latencyMs: h.latencyMs,
+            error: h.error,
+            errorCategory: h.errorCategory,
+            consecutiveFailures: h.consecutiveFailures,
+            cooldownRemaining: h.cooldownRemaining,
+            isExtendedCooldown: h.isExtendedCooldown,
+            lastCheckedAt: h.lastCheckedAt,
+          } : undefined,
+        };
+      }),
     [endpointSummary, endpointHealth],
   );
 

@@ -461,6 +461,7 @@ class EndpointConfig:
     rpm_limit: int = 0  # 每分钟请求数限制 (0=不限流)
     pricing_tiers: list[dict] | None = None  # 阶梯定价 [{"max_input": 128000, "input_price": 1.2, "output_price": 7.2}, ...]
     price_currency: str = "CNY"  # 价格货币单位
+    enabled: bool = True  # 是否启用 (false=停用，不参与调用但保留配置)
 
     def __post_init__(self):
         if self.capabilities is None:
@@ -561,6 +562,7 @@ class EndpointConfig:
             rpm_limit=int(data.get("rpm_limit") or 0),
             pricing_tiers=data.get("pricing_tiers"),
             price_currency=data.get("price_currency", "CNY"),
+            enabled=data.get("enabled", True),
         )
 
     def to_dict(self) -> dict:
@@ -592,6 +594,8 @@ class EndpointConfig:
             result["pricing_tiers"] = self.pricing_tiers
         if self.price_currency and self.price_currency != "CNY":
             result["price_currency"] = self.price_currency
+        if not self.enabled:
+            result["enabled"] = False
         return result
 
 

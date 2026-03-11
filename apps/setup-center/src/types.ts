@@ -52,6 +52,7 @@ export type EndpointDraft = {
   rpm_limit?: number;
   note?: string | null;
   pricing_tiers?: { max_input: number; input_price: number; output_price: number }[];
+  enabled?: boolean;
 };
 
 export type PythonCandidate = {
@@ -154,6 +155,7 @@ export type EndpointSummary = {
   model: string;
   keyEnv: string;
   keyPresent: boolean;
+  enabled?: boolean;
   health?: EndpointHealthResult | null;
 };
 
