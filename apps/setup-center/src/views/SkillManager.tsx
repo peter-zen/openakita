@@ -22,6 +22,34 @@ function getSkillDisplayDesc(skill: SkillInfo, lang: string): string {
   return skill.description_i18n?.[key] || skill.description;
 }
 
+// ─── 错误消息友好化 ───
+
+type ErrorContext = "load" | "save" | "install" | "uninstall" | "reload" | "general";
+
+function friendlyError(e: unknown, t: (key: string) => string, context: ErrorContext = "general"): string {
+  const raw = e instanceof Error ? e.message : String(e);
+
+  if (/AbortError|signal timed out|timeout/i.test(raw)) {
+    return t("skills.errorTimeout");
+  }
+  if (/Failed to fetch|NetworkError|ECONNREFUSED|net::|ERR_CONNECTION|Load failed/i.test(raw)) {
+    return t("skills.errorNetwork");
+  }
+  if (/\b50[0-9]\b|Internal Server Error/i.test(raw)) {
+    return t("skills.errorServer");
+  }
+
+  const contextMap: Record<ErrorContext, string> = {
+    load: "skills.errorLoadFailed",
+    save: "skills.errorSaveFailed",
+    install: "skills.errorInstallFailed",
+    uninstall: "skills.errorUninstallFailed",
+    reload: "skills.errorReloadFailed",
+    general: "skills.errorUnknown",
+  };
+  return t(contextMap[context]);
+}
+
 // ─── 配置表单自动生成 ───
 
 function SkillConfigForm({
@@ -609,7 +637,7 @@ export function SkillManager({
         } catch {
           // Tauri 也失败了——如果 HTTP 也失败了，显示错误
           if (httpError) {
-            setError(`技能列表获取失败 (HTTP: ${httpError})`);
+            setError(friendlyError(httpError, t, "load"));
             return false;
           }
         }
@@ -643,7 +671,7 @@ export function SkillManager({
       setEnabledDirty(false);
       return true;
     } catch (e) {
-      setError(String(e));
+      setError(friendlyError(e, t, "load"));
       return false;
     } finally {
       setLoading(false);
@@ -714,7 +742,7 @@ export function SkillManager({
       // 刷新
       await loadSkills();
     } catch (e) {
-      setError(String(e));
+      setError(friendlyError(e, t, "save"));
     } finally {
       setSaving(false);
     }
@@ -773,7 +801,7 @@ export function SkillManager({
       // 刷新技能列表确认后端状态
       await loadSkills();
     } catch (e) {
-      setError(String(e));
+      setError(friendlyError(e, t, "save"));
     } finally {
       setSavingEnabled(false);
     }
@@ -826,7 +854,7 @@ export function SkillManager({
       // 完成后刷新技能列表
       await loadSkills();
     } catch (e) {
-      setError(String(e));
+      setError(friendlyError(e, t));
     } finally {
       setAiOrganizing(false);
     }
@@ -889,7 +917,7 @@ export function SkillManager({
         await loadSkills();
         onNotice?.(t("skills.alreadyInstalled"));
       } else {
-        setError(msg);
+        setError(friendlyError(e, t, "install"));
       }
     } finally {
       setLocalImporting(false);
@@ -1013,7 +1041,7 @@ export function SkillManager({
       onNotice?.(t("skills.uninstallSuccess", { name: displayName }));
       await loadSkills();
     } catch (e) {
-      const msg = String(e);
+      const msg = friendlyError(e, t, "uninstall");
       setError(msg);
       onNotice?.(msg);
     } finally {
@@ -1107,7 +1135,7 @@ export function SkillManager({
     } catch (e) {
       if (reqId !== marketRequestId.current) return;
       // 失败时不清空已有数据，只在没有任何数据时显示错误
-      setError(`${t("skills.marketplace")}: ${String(e)}`);
+      setError(`${t("skills.marketplace")}: ${friendlyError(e, t)}`);
     } finally {
       if (reqId === marketRequestId.current) {
         setMarketLoading(false);
@@ -1129,7 +1157,7 @@ export function SkillManager({
   // ── 安装技能 ──
   const handleInstall = useCallback(async (skill: MarketplaceSkill) => {
     if (dataMode !== "remote" && !serviceRunning && (!venvDir || !currentWorkspaceId)) {
-      setError("环境未就绪：请先完成 Python 环境和工作区配置");
+      setError(t("skills.envNotReady"));
       return;
     }
     const uniqueKey = skill.url || skill.id || skill.name;
@@ -1149,7 +1177,6 @@ export function SkillManager({
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         installed = true;
-        // 安装成功后通知后端热重载技能
         try {
           await safeFetch(`${apiBaseUrl}/api/skills/reload`, {
             method: "POST",
@@ -1176,8 +1203,8 @@ export function SkillManager({
       setTab("installed");
       setExpandedSkill(skill.skillId || skill.name);
     } catch (e) {
-      const msg = String(e);
-      if (msg.includes("该技能已安装") || msg.toLowerCase().includes("already installed")) {
+      const raw = String(e);
+      if (raw.includes("该技能已安装") || raw.toLowerCase().includes("already installed")) {
         const refreshed = await loadSkills();
         if (refreshed) {
           setMarketplace((prev) => prev.map((s) =>
@@ -1186,11 +1213,12 @@ export function SkillManager({
           onNotice?.(t("skills.alreadyInstalled"));
           setTab("installed");
         } else {
-          setError(msg);
+          setError(friendlyError(e, t, "install"));
         }
       } else {
-        setError(msg);
-        onNotice?.(msg);
+        const friendly = friendlyError(e, t, "install");
+        setError(friendly);
+        onNotice?.(friendly);
       }
     } finally {
       setInstallingSet(prev => { const next = new Set(prev); next.delete(uniqueKey); return next; });
@@ -1202,7 +1230,7 @@ export function SkillManager({
     const url = manualUrl.trim();
     if (!url) return;
     if (dataMode !== "remote" && !serviceRunning && (!venvDir || !currentWorkspaceId)) {
-      setError(t("skills.envNotReady") || "环境未就绪：请先完成 Python 环境和工作区配置");
+      setError(t("skills.envNotReady"));
       return;
     }
     setManualInstalling(true);
@@ -1242,15 +1270,16 @@ export function SkillManager({
       await loadSkills();
       setTab("installed");
     } catch (e) {
-      const msg = String(e);
-      if (msg.includes("该技能已安装") || msg.toLowerCase().includes("already installed")) {
+      const raw = String(e);
+      if (raw.includes("该技能已安装") || raw.toLowerCase().includes("already installed")) {
         setManualUrl("");
         await loadSkills();
         onNotice?.(t("skills.alreadyInstalled"));
         setTab("installed");
       } else {
-        setError(msg);
-        onNotice?.(msg);
+        const friendly = friendlyError(e, t, "install");
+        setError(friendly);
+        onNotice?.(friendly);
       }
     } finally {
       setManualInstalling(false);
@@ -1290,12 +1319,12 @@ export function SkillManager({
                   signal: AbortSignal.timeout(15_000),
                 });
                 const data = await res.json();
-                if (data.error) { setError(typeof data.error === "string" ? data.error : JSON.stringify(data.error)); return; }
+                if (data.error) { setError(friendlyError(data.error, t, "reload")); return; }
               }
               const ok = await loadSkills();
               if (ok) onNotice?.(t("skills.refreshed"));
             } catch (e) {
-              setError(String(e));
+              setError(friendlyError(e, t, "reload"));
             } finally {
               setRefreshing(false);
             }
