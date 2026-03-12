@@ -590,6 +590,8 @@ export function OrgEditorView({
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const lastSavedRef = useRef<string>("");
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showNewNodeForm, setShowNewNodeForm] = useState(false);
   const [propsTab, setPropsTab] = useState<"basic" | "identity" | "capabilities" | "advanced" | "live" | "chat">("basic");
@@ -708,6 +710,7 @@ export function OrgEditorView({
       const res = await safeFetch(`${apiBaseUrl}/api/orgs/${orgId}`);
       const data: OrgFull = await res.json();
       setCurrentOrg(data);
+      lastSavedRef.current = "";
       const flowNodes = data.nodes.map(orgNodeToFlowNode);
       const flowEdges = data.edges.map(orgEdgeToFlowEdge);
       const hasOverlap = detectOverlap(flowNodes);
@@ -1021,50 +1024,77 @@ export function OrgEditorView({
 
   // ── Save ──
 
-  const handleSave = useCallback(async () => {
-    if (!currentOrg) return;
+  const buildSavePayload = useCallback(() => {
+    if (!currentOrg) return null;
+    const updatedNodes = nodes.map((n) => ({
+      ...n.data,
+      position: n.position,
+    }));
+    const updatedEdges = edges.map((e) => ({
+      ...(e.data || {}),
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      edge_type: (e.data as any)?.edge_type || "hierarchy",
+      label: (e.data as any)?.label || (e.label as string) || "",
+      bidirectional: (e.data as any)?.bidirectional ?? true,
+      priority: (e.data as any)?.priority ?? 0,
+      bandwidth_limit: (e.data as any)?.bandwidth_limit ?? 60,
+    }));
+    return {
+      name: currentOrg.name,
+      description: currentOrg.description,
+      user_persona: currentOrg.user_persona || { title: "负责人", display_name: "", description: "" },
+      core_business: currentOrg.core_business || "",
+      heartbeat_enabled: currentOrg.heartbeat_enabled,
+      heartbeat_interval_s: currentOrg.heartbeat_interval_s,
+      standup_enabled: currentOrg.standup_enabled,
+      nodes: updatedNodes,
+      edges: updatedEdges,
+    };
+  }, [currentOrg, nodes, edges]);
+
+  const doSave = useCallback(async (quiet = false): Promise<boolean> => {
+    if (!currentOrg) return false;
+    const payload = buildSavePayload();
+    if (!payload) return false;
+    const snapshot = JSON.stringify(payload);
+    if (snapshot === lastSavedRef.current) return true;
     setSaving(true);
     try {
-      const updatedNodes = nodes.map((n) => ({
-        ...n.data,
-        position: n.position,
-      }));
-      const updatedEdges = edges.map((e) => ({
-        ...(e.data || {}),
-        id: e.id,
-        source: e.source,
-        target: e.target,
-        edge_type: (e.data as any)?.edge_type || "hierarchy",
-        label: (e.data as any)?.label || (e.label as string) || "",
-        bidirectional: (e.data as any)?.bidirectional ?? true,
-        priority: (e.data as any)?.priority ?? 0,
-        bandwidth_limit: (e.data as any)?.bandwidth_limit ?? 60,
-      }));
       const resp = await safeFetch(`${apiBaseUrl}/api/orgs/${currentOrg.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: currentOrg.name,
-          description: currentOrg.description,
-          user_persona: currentOrg.user_persona || { title: "负责人", display_name: "", description: "" },
-          core_business: currentOrg.core_business || "",
-          heartbeat_enabled: currentOrg.heartbeat_enabled,
-          heartbeat_interval_s: currentOrg.heartbeat_interval_s,
-          standup_enabled: currentOrg.standup_enabled,
-          nodes: updatedNodes,
-          edges: updatedEdges,
-        }),
+        body: snapshot,
       });
       if (!resp.ok) throw new Error(`保存失败 (${resp.status})`);
-      showToast("保存成功", "ok");
+      lastSavedRef.current = snapshot;
+      if (!quiet) showToast("保存成功", "ok");
       fetchOrgList();
+      return true;
     } catch (e: any) {
       console.error("Failed to save org:", e);
-      showToast(e.message || "保存失败", "error");
+      if (!quiet) showToast(e.message || "保存失败", "error");
+      return false;
     } finally {
       setSaving(false);
     }
-  }, [currentOrg, nodes, edges, apiBaseUrl, fetchOrgList]);
+  }, [currentOrg, buildSavePayload, apiBaseUrl, fetchOrgList, showToast]);
+
+  const handleSave = useCallback(() => doSave(false), [doSave]);
+
+  const autoSave = useCallback(() => {
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => doSave(true), 300);
+  }, [doSave]);
+
+  useEffect(() => {
+    if (!currentOrg) return;
+    const payload = buildSavePayload();
+    if (!payload) return;
+    const snap = JSON.stringify(payload);
+    if (!lastSavedRef.current) lastSavedRef.current = snap;
+  }, [currentOrg, buildSavePayload]);
 
   // ── Create org ──
 
@@ -1197,24 +1227,27 @@ export function OrgEditorView({
   // ── Node click ──
 
   const onNodeClick = useCallback((_: any, node: Node) => {
+    if (selectedNodeId && selectedNodeId !== node.id) autoSave();
     setSelectedNodeId(node.id);
     setSelectedEdgeId(null);
     setPropsTab(liveMode ? "live" : "basic");
     setFullPromptPreview(null);
     setShowRightPanel(true);
-  }, [liveMode]);
+  }, [liveMode, selectedNodeId, autoSave]);
 
   const onEdgeClick = useCallback((_: any, edge: Edge) => {
+    if (selectedNodeId || selectedEdgeId) autoSave();
     setSelectedEdgeId(edge.id);
     setSelectedNodeId(null);
     setShowRightPanel(true);
-  }, []);
+  }, [selectedNodeId, selectedEdgeId, autoSave]);
 
   const onPaneClick = useCallback(() => {
     setSelectedNodeId(null);
     setSelectedEdgeId(null);
     setContextMenu(null);
-  }, []);
+    autoSave();
+  }, [autoSave]);
 
   // ── Fetch node detail when selected in live mode ──
   useEffect(() => {
@@ -1523,7 +1556,7 @@ export function OrgEditorView({
             <div className="org-tb-group" data-label="视图">
               <button
                 className="btnSmall"
-                onClick={() => setViewMode(viewMode === "canvas" ? "dashboard" : viewMode === "dashboard" ? "projects" : "canvas")}
+                onClick={() => { autoSave(); setViewMode(viewMode === "canvas" ? "dashboard" : viewMode === "dashboard" ? "projects" : "canvas"); }}
                 style={{
                   fontWeight: viewMode !== "canvas" ? 600 : 400,
                   color: viewMode === "dashboard" ? "#8b5cf6" : viewMode === "projects" ? "#f59e0b" : undefined,
@@ -1566,7 +1599,7 @@ export function OrgEditorView({
               {!isMobile && (
                 <button
                   className="btnSmall"
-                  onClick={() => setShowRightPanel(!showRightPanel)}
+                  onClick={() => { if (showRightPanel) autoSave(); setShowRightPanel(!showRightPanel); }}
                   title={showRightPanel ? "收起设置面板" : "展开设置面板"}
                   style={{
                     fontWeight: showRightPanel ? 600 : 400,
@@ -1757,7 +1790,7 @@ export function OrgEditorView({
           {orgList.map((org) => (
             <div
               key={org.id}
-              onClick={() => { setSelectedOrgId(org.id); setShowLeftPanel(false); }}
+              onClick={() => { if (selectedOrgId && selectedOrgId !== org.id) autoSave(); setSelectedOrgId(org.id); setShowLeftPanel(false); }}
               className={`navItem ${selectedOrgId === org.id ? "navItemActive" : ""}`}
               style={{
                 padding: "8px 10px",
@@ -2249,7 +2282,7 @@ export function OrgEditorView({
       {/* ── Right Panel: Node Properties ── */}
       {isMobile && selectedNode && showRightPanel && (
         <div
-          onClick={() => setSelectedNodeId(null)}
+          onClick={() => { autoSave(); setSelectedNodeId(null); }}
           style={{
             position: "absolute", inset: 0, zIndex: 49,
             background: "rgba(0,0,0,0.3)",
@@ -2296,7 +2329,7 @@ export function OrgEditorView({
                 </button>
               )}
               {isMobile && (
-                <button className="btnSmall" onClick={() => setSelectedNodeId(null)} style={{ minWidth: 36, minHeight: 36 }}><IconX size={14} /></button>
+                <button className="btnSmall" onClick={() => { autoSave(); setSelectedNodeId(null); }} style={{ minWidth: 36, minHeight: 36 }}><IconX size={14} /></button>
               )}
             </div>
           </div>
