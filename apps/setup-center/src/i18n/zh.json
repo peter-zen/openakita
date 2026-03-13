@@ -487,6 +487,8 @@
     "toolsTitle": "工具与技能",
     "toolsHint": "管理 Skills、MCP 集成、桌面自动化和网络代理",
     "toolsSkills": "Skills",
+    "toolsSkillsEnabled": "已启用",
+    "toolsSkillsDisabled": "已禁用",
     "toolsEnableAll": "启用全部",
     "toolsSystemOnly": "仅系统",
     "toolsRefresh": "刷新",

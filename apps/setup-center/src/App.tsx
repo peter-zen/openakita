@@ -5253,83 +5253,26 @@ export function App() {
             </div>
           </details>
 
-          {/* ── Skills (collapsed, at bottom) ── */}
-          <details className="group/skills rounded-lg border border-border mt-3">
-            <summary className="cursor-pointer flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium select-none list-none [&::-webkit-details-marker]:hidden hover:bg-accent/50 transition-colors">
-              <ChevronDownIcon className="size-4 shrink-0 transition-transform group-open/skills:rotate-180 text-muted-foreground" />
-              {t("config.toolsSkills")} {skillsDetail ? `(${systemSkills.length + externalSkills.length})` : ""}
-            </summary>
-            <div className="flex flex-col gap-2.5 px-4 py-3 border-t border-border">
-              <div className="flex justify-end gap-1.5 flex-wrap">
-                <Button variant="outline" size="sm" onClick={() => {
-                  if (!skillsDetail) return; setSkillsTouched(true);
-                  const m: Record<string, boolean> = {};
-                  for (const s of skillsDetail) m[s.skill_id] = true;
-                  setSkillsSelection(m);
-                }} disabled={!skillsDetail || !!busy}>{t("config.toolsEnableAll")}</Button>
-                <Button variant="outline" size="sm" onClick={() => {
-                  if (!skillsDetail) return; setSkillsTouched(true);
-                  const m: Record<string, boolean> = {};
-                  for (const s of skillsDetail) m[s.skill_id] = !!s.system;
-                  setSkillsSelection(m);
-                }} disabled={!skillsDetail || !!busy}>{t("config.toolsSystemOnly")}</Button>
-                <Button variant="outline" size="sm" onClick={doRefreshSkills} disabled={!currentWorkspaceId || !!busy}>{t("config.toolsRefresh")}</Button>
-                <Button variant="default" size="sm" onClick={doSaveSkillsSelection}
-                  disabled={!currentWorkspaceId || !skillsDetail || !!busy}>{t("config.toolsSaveSkills")}</Button>
+          {/* ── Skills toggle ── */}
+          <div className="flex items-center justify-between rounded-lg border border-border mt-3 px-4 py-2.5">
+            <span className="text-sm font-medium">{t("config.toolsSkills")} {skillSummary ? `(${skillSummary.count})` : ""}</span>
+            <label className="inline-flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+              <span>{disabledViews.includes("skills") ? t("config.toolsSkillsDisabled") : t("config.toolsSkillsEnabled")}</span>
+              <div
+                onClick={() => toggleViewDisabled("skills")}
+                className="relative shrink-0 transition-colors duration-200 rounded-full"
+                style={{
+                  width: 40, height: 22,
+                  background: disabledViews.includes("skills") ? "var(--line, #d1d5db)" : "var(--ok, #22c55e)",
+                }}
+              >
+                <div className="absolute top-0.5 rounded-full bg-white shadow-sm transition-[left] duration-200" style={{
+                  width: 18, height: 18,
+                  left: disabledViews.includes("skills") ? 2 : 20,
+                }} />
               </div>
-
-              {!skillsDetail ? (
-                <p className="text-sm text-muted-foreground">{t("config.toolsNoSkills")}</p>
-              ) : (
-                <div className="flex flex-col gap-1">
-                  {systemSkills.length > 0 && (
-                    <p className="text-xs text-muted-foreground">{t("config.toolsSystemLabel", { count: systemSkills.length })}</p>
-                  )}
-                  {systemSkills.map((s) => {
-                    const lang = i18n.language?.startsWith("zh") ? "zh" : i18n.language || "zh";
-                    const dName = s.name_i18n?.[lang] || s.name;
-                    const dDesc = s.description_i18n?.[lang] || s.description;
-                    return (
-                      <div key={s.skill_id} className="flex items-center justify-between py-0.5">
-                        <div className="min-w-0">
-                          <span className="font-semibold text-sm">{dName}</span>
-                          {dName !== s.name && <span className="ml-1 text-[11px] font-mono text-muted-foreground/40">{s.name}</span>}
-                          <span className="ml-1.5 text-[11px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{t("skills.system")}</span>
-                          <span className="ml-2 text-[11px] text-muted-foreground">{dDesc}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {externalSkills.length > 0 && (
-                    <>
-                      <div className="border-b my-1" />
-                      <p className="text-xs text-muted-foreground">{t("config.toolsExternalLabel", { count: externalSkills.length })}</p>
-                    </>
-                  )}
-                  {externalSkills.map((s) => {
-                    const on = !!skillsSelection[s.skill_id];
-                    const lang = i18n.language?.startsWith("zh") ? "zh" : i18n.language || "zh";
-                    const dName = s.name_i18n?.[lang] || s.name;
-                    const dDesc = s.description_i18n?.[lang] || s.description;
-                    return (
-                      <div key={s.skill_id} className="flex items-center justify-between py-0.5">
-                        <div className="flex-1 min-w-0">
-                          <span className="font-semibold text-sm">{dName}</span>
-                          {dName !== s.name && <span className="ml-1 text-[11px] font-mono text-muted-foreground/40">{s.name}</span>}
-                          <span className="ml-2 text-[11px] text-muted-foreground">{dDesc}</span>
-                        </div>
-                        <label className="inline-flex items-center gap-1.5 text-xs shrink-0 cursor-pointer select-none px-2 py-1 rounded-md border border-border hover:bg-accent/50 transition-colors">
-                          <input className="size-3.5 accent-primary" type="checkbox" checked={on}
-                            onChange={(e) => { setSkillsTouched(true); setSkillsSelection((m) => ({ ...m, [s.skill_id]: e.target.checked })); }} />
-                          {t("config.enable")}
-                        </label>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </details>
+            </label>
+          </div>
 
         </div>
 

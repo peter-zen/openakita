@@ -487,6 +487,8 @@
     "toolsTitle": "Tools & Skills",
     "toolsHint": "Manage Skills, MCP integrations, Desktop Automation, and Network Proxy",
     "toolsSkills": "Skills",
+    "toolsSkillsEnabled": "Enabled",
+    "toolsSkillsDisabled": "Disabled",
     "toolsEnableAll": "Enable All",
     "toolsSystemOnly": "System Only",
     "toolsRefresh": "Refresh",
