@@ -459,6 +459,8 @@ async def submit_bug_report(
     steps: str = Form(""),
     upload_logs: bool = Form(True),
     upload_debug: bool = Form(True),
+    contact_email: str = Form(""),
+    contact_wechat: str = Form(""),
     images: list[UploadFile] | None = File(None),  # noqa: B008
 ):
     """Submit a bug report with system info, logs, and LLM debug files."""
@@ -472,7 +474,7 @@ async def submit_bug_report(
 
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        metadata = {
+        metadata: dict = {
             "report_id": report_id,
             "type": "bug",
             "title": title,
@@ -481,6 +483,11 @@ async def submit_bug_report(
             "system_info": sys_info,
             "created_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         }
+        if contact_email or contact_wechat:
+            metadata["contact"] = {
+                "email": contact_email,
+                "wechat": contact_wechat,
+            }
         zf.writestr("metadata.json", json.dumps(metadata, ensure_ascii=False, indent=2))
 
         await _pack_images(zf, images)

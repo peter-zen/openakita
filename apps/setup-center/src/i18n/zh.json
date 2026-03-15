@@ -1187,6 +1187,7 @@
     "uploadLogs": "上传近期日志",
     "uploadDebug": "上传最近 50 条 LLM 调试文件",
     "debugWarning": "调试文件可能包含近期对话内容，如涉及敏感信息请取消勾选",
+    "contactHint": "如需接收修复进度通知，请留下联系方式",
     "systemInfo": "系统信息（自动采集）",
     "submit": "提交报告",
     "submitting": "提交中...",

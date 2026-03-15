@@ -1187,6 +1187,7 @@
     "uploadLogs": "Upload recent logs",
     "uploadDebug": "Upload recent 50 LLM debug files",
     "debugWarning": "Debug files may contain recent conversation content",
+    "contactHint": "Leave your contact info to receive bug fix updates",
     "systemInfo": "System Information (auto-collected)",
     "submit": "Submit Report",
     "submitting": "Submitting...",

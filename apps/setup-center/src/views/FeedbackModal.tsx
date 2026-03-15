@@ -223,9 +223,9 @@ export function FeedbackModal({ open, onClose, apiBase, initialMode = "bug" }: F
         form.append("upload_debug", String(uploadDebug));
       } else {
         url = `${apiBase}/api/feature-request`;
-        form.append("contact_email", contactEmail.trim());
-        form.append("contact_wechat", contactWechat.trim());
       }
+      form.append("contact_email", contactEmail.trim());
+      form.append("contact_wechat", contactWechat.trim());
 
       const res = await safeFetch(url, {
         method: "POST",
@@ -355,27 +355,30 @@ export function FeedbackModal({ open, onClose, apiBase, initialMode = "bug" }: F
             </div>
           )}
 
-          {/* Feature: Contact info */}
-          {!isBug && (
-            <div className="space-y-1">
-              <Label className="text-[13px]">{t("featureRequest.contactLabel")}</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={contactEmail}
-                  onChange={(e) => setContactEmail(e.target.value)}
-                  placeholder={t("featureRequest.emailPlaceholder")}
-                  type="email"
-                  className="flex-1"
-                />
-                <Input
-                  value={contactWechat}
-                  onChange={(e) => setContactWechat(e.target.value)}
-                  placeholder={t("featureRequest.wechatPlaceholder")}
-                  className="flex-1"
-                />
-              </div>
+          {/* Contact info */}
+          <div className="space-y-1">
+            <Label className="text-[13px]">
+              {isBug ? t("featureRequest.contactLabel") : t("featureRequest.contactLabel")}
+            </Label>
+            {isBug && (
+              <p className="text-[11px] text-muted-foreground/70">{t("bugReport.contactHint")}</p>
+            )}
+            <div className="flex gap-2">
+              <Input
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder={t("featureRequest.emailPlaceholder")}
+                type="email"
+                className="flex-1"
+              />
+              <Input
+                value={contactWechat}
+                onChange={(e) => setContactWechat(e.target.value)}
+                placeholder={t("featureRequest.wechatPlaceholder")}
+                className="flex-1"
+              />
             </div>
-          )}
+          </div>
 
           {/* Image upload */}
           <div className="space-y-1">
