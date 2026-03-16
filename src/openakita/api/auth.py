@@ -145,6 +145,10 @@ class WebAccessConfig:
             self._data["jwt_secret"] = secrets.token_hex(32)
             needs_save = True
 
+        if not self._data.get("data_epoch"):
+            self._data["data_epoch"] = secrets.token_hex(8)
+            needs_save = True
+
         if not self._data.get("token_version"):
             self._data["token_version"] = 1
             needs_save = True
@@ -198,6 +202,10 @@ class WebAccessConfig:
     @property
     def token_version(self) -> int:
         return self._data.get("token_version", 1)
+
+    @property
+    def data_epoch(self) -> str:
+        return self._data.get("data_epoch", "")
 
     @property
     def password_hint(self) -> str:

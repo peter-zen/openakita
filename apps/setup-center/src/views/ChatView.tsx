@@ -2234,7 +2234,30 @@ export function ChatView({
         if (cancelled) return;
         const data = await res.json();
         const backendSessions: { id: string; title: string; lastMessage: string; timestamp: number; messageCount: number; agentProfileId?: string }[] = data.sessions || [];
-        if (backendSessions.length === 0 || cancelled) return;
+        if (cancelled) return;
+
+        // Detect factory reset via data_epoch: if the backend's epoch changed,
+        // its data/ directory was recreated (factory reset or fresh install).
+        // Clear all stale local conversations so the web client stays in sync.
+        const epoch = data.data_epoch as string | undefined;
+        if (epoch) {
+          const EPOCH_KEY = "openakita_data_epoch";
+          const cached = localStorage.getItem(EPOCH_KEY);
+          localStorage.setItem(EPOCH_KEY, epoch);
+          if (cached && cached !== epoch) {
+            setConversations((prev) => {
+              for (const c of prev) {
+                try { localStorage.removeItem(STORAGE_KEY_MSGS_PREFIX + c.id); } catch {}
+              }
+              return [];
+            });
+            setActiveConvId(null);
+            setMessages([]);
+            return;
+          }
+        }
+
+        if (backendSessions.length === 0) return;
 
         const restoredConvs: ChatConversation[] = backendSessions.map((s) => ({
           id: s.id,
