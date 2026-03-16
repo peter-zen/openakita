@@ -13,6 +13,7 @@ import { Brain, Loader2, Upload, Download } from "lucide-react";
 import { Section } from "../components/Section";
 import { toast } from "sonner";
 import { safeFetch } from "../providers";
+import { IS_TAURI, saveFileDialog, showInFolder } from "../platform";
 import type { EnvMap } from "../types";
 import { envGet, envSet } from "../utils";
 
@@ -101,14 +102,30 @@ export function AgentSystemView(props: AgentSystemViewProps) {
     try {
       const res = await safeFetch(`${apiBaseUrl}/api/identity/persona/template`);
       const text = await res.text();
-      const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "persona_template.md";
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success(t("config.personaTemplateDownloaded"));
+
+      if (IS_TAURI) {
+        const chosen = await saveFileDialog({
+          title: t("config.personaTemplateSaveTitle"),
+          defaultPath: "persona_template.md",
+          filters: [{ name: "Markdown", extensions: ["md"] }],
+        });
+        if (!chosen) return;
+        const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+        await writeTextFile(chosen, text);
+        toast.success(t("config.personaTemplateSaved", { path: chosen }), {
+          action: { label: t("config.personaOpenFolder"), onClick: () => showInFolder(chosen) },
+          duration: 8000,
+        });
+      } else {
+        const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "persona_template.md";
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success(t("config.personaTemplateDownloaded"));
+      }
     } catch (e: any) {
       toast.error(e.message || "Download failed");
     }
