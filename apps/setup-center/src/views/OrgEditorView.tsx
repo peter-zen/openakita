@@ -3372,14 +3372,17 @@ export function OrgEditorView({
                     提示词构成说明
                   </div>
                   <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.7 }}>
-                    <div>系统会自动将以下信息拼装为完整的角色提示词：</div>
+                    <div>系统会自动将以下信息拼装为完整的组织 Agent 提示词：</div>
                     <div style={{ marginTop: 4, paddingLeft: 8 }}>
-                      <div>1. <b>岗位名称 / 目标 / 背景</b>（基本 tab）— 自动生成角色描述</div>
-                      <div>2. <b>自定义提示词</b>（下方）— 覆盖自动生成，精细控制</div>
-                      <div>3. <b>组织上下文</b>（自动注入）— 架构、关系、权限、黑板</div>
+                      <div>1. <b>精简身份声明</b> — 角色定位 + 协作原则（自动生成）</div>
+                      <div>2. <b>角色描述</b> — 来自 ROLE.md / 自定义提示词 / 岗位信息</div>
+                      <div>3. <b>组织上下文</b> — 核心业务、架构、上下级关系、权限、黑板</div>
+                      <div>4. <b>运行环境</b> — 时间、OS、Shell 等（自动注入）</div>
+                      <div>5. <b>工具清单</b> — org_* 工具 + 节点配置的外部工具</div>
+                      <div>6. <b>行为准则 &amp; 策略红线</b> — 协作规则、交付流程</div>
                     </div>
                     <div style={{ marginTop: 6 }}>
-                      优先级：ROLE.md 文件 &gt; 自定义提示词 &gt; AgentProfile &gt; 自动生成
+                      角色描述优先级：ROLE.md 文件 &gt; 自定义提示词 &gt; AgentProfile &gt; 自动生成
                     </div>
                   </div>
                 </div>
@@ -3483,7 +3486,7 @@ export function OrgEditorView({
                   )}
                   {fullPromptPreview !== null && (
                     <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 6 }}>
-                      以上为运行时注入给 LLM 的完整组织上下文提示词（{fullPromptPreview.length} 字符）
+                      以上为组织上下文提示词（{fullPromptPreview.length} 字符）。实际运行时还会追加运行环境、工具清单、行为准则等（约 1500-2500 字符）。
                     </div>
                   )}
                 </div>
@@ -3497,11 +3500,13 @@ export function OrgEditorView({
                     高级：身份文件
                   </div>
                   <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.6 }}>
-                    如需更精细的身份控制，可在组织目录下创建节点专属身份文件：
+                    如需更精细的角色控制，可在组织目录下创建节点专属身份文件：
                     <div style={{ fontFamily: "monospace", fontSize: 10, marginTop: 4, paddingLeft: 8 }}>
-                      <div>nodes/{selectedNode.id}/identity/ROLE.md — 角色定义</div>
-                      <div>nodes/{selectedNode.id}/identity/AGENT.md — 覆盖全局 Agent 人格</div>
-                      <div>nodes/{selectedNode.id}/identity/SOUL.md — 覆盖全局核心价值观</div>
+                      <div>nodes/{selectedNode.id}/identity/ROLE.md — 角色定义（最高优先级）</div>
+                    </div>
+                    <div style={{ fontSize: 10, color: "var(--warning, #b8860b)", marginTop: 6 }}>
+                      注意：组织模式下使用精简协作身份，不注入 SOUL.md / AGENT.md
+                      的完整内容（其「单打独斗」哲学与组织协作冲突）。ROLE.md 正常生效。
                     </div>
                   </div>
                 </div>

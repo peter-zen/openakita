@@ -76,7 +76,14 @@ class OrgIdentity:
         policy_index: str = "",
         project_tasks_summary: str = "",
     ) -> str:
-        """Build the full organization context prompt for a node agent."""
+        """Build the full organization context prompt for a node agent.
+
+        Does NOT include identity.soul or identity.agent — those contain
+        generic solo-agent philosophies (Ralph Wiggum "never give up",
+        "solve everything yourself") that directly conflict with the
+        organizational delegation model.  A minimal identity declaration
+        is generated instead.
+        """
         parent = org.get_parent(node.id)
         children = org.get_children(node.id)
 
@@ -96,14 +103,23 @@ class OrgIdentity:
 
         parts: list[str] = []
 
-        if identity.soul:
-            parts.append(identity.soul)
-        if identity.agent:
-            parts.append(identity.agent)
+        # Compact identity declaration (replaces full SOUL.md + AGENT.md)
+        parts.append(
+            f"# OpenAkita 组织 Agent\n\n"
+            f"你是「{org.name}」中的 **{node.role_title}**。"
+            f"你是 AI Agent，由 OpenAkita 驱动。\n\n"
+            f"## 核心原则\n"
+            f"- 诚实：不编造信息，不确定时明确说明\n"
+            f"- 安全：不执行可能造成伤害的操作\n"
+            f"- 协作：你是组织的一员，通过团队协作完成目标，而非单打独斗"
+        )
 
-        parts.append(f"## 你的组织角色\n"
-                     f"你在「{org.name}」中担任 **{node.role_title}**（{node.department}）。\n"
-                     f"{identity.role}")
+        # Role description
+        dept_label = f"（{node.department}）" if node.department else ""
+        role_section = f"## 你的组织角色\n你在「{org.name}」中担任 **{node.role_title}**{dept_label}。"
+        if identity.role:
+            role_section += f"\n{identity.role}"
+        parts.append(role_section)
 
         if org.core_business:
             is_root = (node.level == 0 or not parent)
@@ -139,6 +155,7 @@ class OrgIdentity:
         parts.append(f"## 组织架构概览\n{org_chart}\n"
                      f"需要详情时用 org_get_org_chart 查看完整架构，不确定找谁时用 org_find_colleague 搜索。")
 
+        # Relationships with enhanced delegation guidance
         rel_parts = []
         persona = org.user_persona
         if parent:
@@ -147,10 +164,14 @@ class OrgIdentity:
             desc = f"（{persona.description}）" if persona.description else "（用户）"
             rel_parts.append(f"- 直属上级：{persona.label}{desc}")
         if children:
-            child_str = ", ".join(f"{c.role_title}" for c in children)
-            rel_parts.append(f"- 直属下级：{child_str}")
+            child_lines = []
+            for c in children:
+                goal_hint = f" — {c.role_goal}" if c.role_goal else ""
+                child_lines.append(f"  - **{c.role_title}** (id: `{c.id}`){goal_hint}")
+            rel_parts.append("- 直属下级：\n" + "\n".join(child_lines))
             rel_parts.append(
-                "- 你有下属，可使用 org_delegate_task 委派任务，下属完成后用 org_submit_deliverable 提交交付物"
+                "\n**重要：你是管理者。收到复杂任务时，首先拆解并用 org_delegate_task 委派给合适的下属，"
+                "而非自己动手执行。只有简单协调沟通才自己处理。**"
             )
         if connected_peers:
             rel_parts.append(f"- 协作伙伴：{', '.join(connected_peers)}")
@@ -202,7 +223,7 @@ class OrgIdentity:
         else:
             parts.append(
                 "## 组织工具与行为约束\n"
-                "你**只能**使用 org_* 系列工具。不要调用 create_plan、write_file、read_file、"
+                "你**只能**使用 org_* 系列工具。不要调用 write_file、read_file、"
                 "run_shell、call_mcp_tool 等非组织工具，它们不可用。\n"
                 "协作规则：\n"
                 "- 优先通过直接连线关系沟通（上下级、协作伙伴）\n"

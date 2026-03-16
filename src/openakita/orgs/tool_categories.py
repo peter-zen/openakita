@@ -21,6 +21,7 @@ TOOL_CATEGORIES: dict[str, list[str]] = {
         "browser_screenshot",
     ],
     "communication": ["deliver_artifacts", "get_chat_history"],
+    "skills": ["run_skill_script", "list_skills", "get_skill_info", "get_skill_reference"],
 }
 
 ROLE_TOOL_PRESETS: dict[str, list[str]] = {

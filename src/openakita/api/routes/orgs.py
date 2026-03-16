@@ -711,19 +711,53 @@ async def preview_node_prompt(request: Request, org_id: str, node_id: str):
     dept_summary = bb.get_dept_summary(node.department) if bb and node.department else ""
     node_summary = bb.get_node_summary(node.id) if bb else ""
 
-    full_prompt = identity.build_org_context_prompt(
+    org_context_prompt = identity.build_org_context_prompt(
         node, org, resolved,
         blackboard_summary=blackboard_summary,
         dept_summary=dept_summary,
         node_summary=node_summary,
     )
 
+    from openakita.orgs.tool_categories import expand_tool_categories
+    _ORG_CONFLICT = {"delegate_to_agent", "spawn_agent",
+                     "delegate_parallel", "create_agent"}
+    _KEEP = {"get_tool_info", "create_plan", "update_plan_step",
+             "get_plan_status", "complete_plan"}
+    allowed_external = expand_tool_categories(node.external_tools) - _ORG_CONFLICT
+
+    tool_summary = {
+        "org_tools": "(org_* 系列 — 运行时自动注入)",
+        "keep_tools": sorted(_KEEP),
+        "external_tools_config": node.external_tools or [],
+        "external_tools_expanded": sorted(allowed_external),
+        "blocked_conflict_tools": sorted(_ORG_CONFLICT),
+    }
+
     return {
         "node_id": node_id,
         "identity_level": resolved.level,
+        "identity_level_desc": {
+            0: "Level 0: 无 ROLE.md（使用 custom_prompt / AgentProfile / 自动生成）",
+            1: "Level 1: 有 ROLE.md",
+            2: "Level 2: 有 ROLE.md + AGENT.md",
+            3: "Level 3: 有 ROLE.md + AGENT.md + SOUL.md",
+        }.get(resolved.level, f"Level {resolved.level}"),
         "role_text": resolved.role or "(auto-generated)",
-        "full_prompt": full_prompt,
-        "char_count": len(full_prompt),
+        "soul_agent_injected": False,
+        "soul_agent_note": (
+            "组织模式使用精简协作身份，不注入 SOUL.md / AGENT.md 全文"
+        ),
+        "full_prompt": org_context_prompt,
+        "char_count": len(org_context_prompt),
+        "lean_prompt_structure": [
+            "1. 组织上下文（上方 full_prompt 内容）",
+            "2. 运行环境（时间、OS、Shell — 自动注入）",
+            "3. org_* 工具清单（运行时生成）",
+            "4. 外部执行工具清单（运行时生成）" if allowed_external else None,
+            "5. 行为准则（协作规则 + 交付流程）",
+            "6. 核心策略红线",
+        ],
+        "tool_summary": tool_summary,
     }
 
 

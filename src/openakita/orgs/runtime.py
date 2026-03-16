@@ -688,7 +688,14 @@ class OrgRuntime:
             "get_plan_status",
             "complete_plan",
         })
-        allowed_external = expand_tool_categories(node.external_tools)
+
+        # Free-form delegation tools conflict with org_delegate_task
+        _ORG_CONFLICT_TOOLS = frozenset({
+            "delegate_to_agent", "spawn_agent",
+            "delegate_parallel", "create_agent",
+        })
+
+        allowed_external = expand_tool_categories(node.external_tools) - _ORG_CONFLICT_TOOLS
 
         if hasattr(agent, "tool_catalog"):
             for tool_def in ORG_NODE_TOOLS:
@@ -746,7 +753,15 @@ class OrgRuntime:
 
     @staticmethod
     def _override_system_prompt_for_org(agent: Any, org_context: str) -> None:
-        """Replace the agent's bloated system prompt with an org-focused one."""
+        """Replace the agent's system prompt with an org-focused lean prompt.
+
+        This prompt is used directly by _build_system_prompt_compiled when
+        _org_context is set, bypassing the generic prompt pipeline entirely.
+        """
+        import os
+        import platform
+        from datetime import datetime
+
         org_tool_lines: list[str] = []
         ext_tool_lines: list[str] = []
 
@@ -770,6 +785,38 @@ class OrgRuntime:
         has_external = bool(ext_tool_lines)
 
         parts = [org_context]
+
+        # Runtime environment (compact)
+        try:
+            from ..config import settings
+            tz_name = settings.scheduler_timezone
+        except Exception:
+            tz_name = "Asia/Shanghai"
+        try:
+            from zoneinfo import ZoneInfo
+            from datetime import timezone, timedelta
+            try:
+                tz = ZoneInfo(tz_name)
+            except Exception:
+                tz = timezone(timedelta(hours=8))
+            current_time = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+        except Exception:
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        shell_type = "PowerShell" if platform.system() == "Windows" else "bash"
+        runtime_section = (
+            f"## 运行环境\n"
+            f"- 当前时间: {current_time}\n"
+            f"- 操作系统: {platform.system()} {platform.release()}\n"
+            f"- 工作目录: {os.getcwd()}\n"
+            f"- Shell: {shell_type}"
+        )
+        if platform.system() == "Windows" and has_external:
+            runtime_section += (
+                "\n- Shell 注意: Windows 环境，复杂文本处理请用 write_file 写 Python 脚本"
+                " + run_shell python xxx.py 执行，避免 PowerShell 转义问题"
+            )
+        parts.append(runtime_section)
 
         parts.append(f"## 组织协作工具（org_*）\n\n{org_section}")
 
@@ -796,7 +843,7 @@ class OrgRuntime:
         else:
             parts.append(
                 "## 行为准则\n\n"
-                "1. **只使用上述 org_* 工具**。不要调用 create_plan、write_file、read_file、run_shell 等非组织工具。\n"
+                "1. **只使用上述 org_* 工具**。不要调用 write_file、read_file、run_shell 等非组织工具，它们不可用。\n"
                 "2. **简洁回复**。完成工具调用后，用 1-2 句话总结结果即可。\n"
                 "3. **先查再做**。不确定找谁时用 org_find_colleague；不确定流程时用 org_search_policy。\n"
                 "4. **重要信息写黑板**。决策、方案、进度等用 org_write_blackboard 记录，方便同事查阅。\n"
@@ -804,6 +851,14 @@ class OrgRuntime:
                 "6. **任务交付流程**。收到任务后完成工作，用 org_submit_deliverable 提交给委派人验收。被打回时修改后重新提交。\n"
                 "7. **缺少工具时申请**。如果任务需要你没有的工具，用 org_request_tools 向上级申请。"
             )
+
+        # Core policy guardrails
+        parts.append(
+            "## 核心策略红线\n"
+            "- 不编造信息。不确定时明确说明，不要虚构数据或结果。\n"
+            "- 不假装执行。没有对应工具就不要声称已完成操作。\n"
+            "- 不执行有害操作。不删除用户数据（除非明确要求），不访问敏感系统路径。"
+        )
 
         lean_prompt = "\n\n".join(parts)
 

@@ -42,6 +42,10 @@ from ..tools.catalog import ToolCatalog
 
 # 系统工具定义（从 tools/definitions 导入）
 from ..tools.definitions import BASE_TOOLS
+from .context_utils import DEFAULT_MAX_CONTEXT_TOKENS  # noqa: E402
+from .context_utils import estimate_tokens as _shared_estimate_tokens
+from .context_utils import get_max_context_tokens as _shared_get_max_context_tokens
+from .context_utils import get_raw_context_window as _shared_get_raw_context_window
 from ..tools.file import FileTool
 
 # Handler Registry（模块化工具执行）
@@ -122,15 +126,26 @@ def _ensure_desktop():
 
 logger = logging.getLogger(__name__)
 
-# 上下文管理常量
-# 默认上下文预算：基于 200K context_window 计算 (200000 - 4096 输出预留) * 0.90 ≈ 176K
-# 仅在无法从端点配置获取 context_window 时使用此兜底值
-DEFAULT_MAX_CONTEXT_TOKENS = 160000
+# 上下文管理常量（DEFAULT_MAX_CONTEXT_TOKENS 从 context_utils 导入）
 CHARS_PER_TOKEN = 2  # JSON 序列化后约 2 字符 = 1 token（与 brain.py 一致）
 MIN_RECENT_TURNS = 4  # 至少保留最近 4 轮对话
 COMPRESSION_RATIO = 0.15  # 目标压缩到原上下文的 15%
 CHUNK_MAX_TOKENS = 30000  # 每次发给 LLM 压缩的单块上限
 LARGE_TOOL_RESULT_THRESHOLD = 5000  # 单条 tool_result 超过此 token 数时独立压缩
+
+# 小上下文窗口模型的核心工具白名单（仅保留最基本的执行能力）
+SMALL_CTX_CORE_TOOLS = {
+    "run_shell", "read_file", "write_file", "list_directory",
+    "ask_user", "get_tool_info",
+}
+# 中等上下文窗口模型额外包含的工具
+MEDIUM_CTX_EXTRA_TOOLS = {
+    "add_memory", "search_memory", "get_memory_stats",
+    "list_skills", "get_skill_info", "run_skill_script",
+    "web_search", "browser_navigate",
+    "call_mcp_tool", "list_mcp_tools",
+    "enable_thinking",
+}
 
 # Prompt Compiler 系统提示词（两段式 Prompt 第一阶段）
 PROMPT_COMPILER_SYSTEM = """【角色】
@@ -549,10 +564,21 @@ class Agent:
 
         Sub-agents must not have delegation tools to prevent
         uncontrolled recursive delegation chains.
+
+        Small context window models get a reduced tool set to save tokens.
         """
+        tools = self._tools
         if self._is_sub_agent_call:
-            return [t for t in self._tools if t.get("name") not in self._agent_tool_names]
-        return self._tools
+            tools = [t for t in tools if t.get("name") not in self._agent_tool_names]
+
+        ctx = self._get_raw_context_window()
+        if 0 < ctx < 8000:
+            tools = [t for t in tools if t.get("name") in SMALL_CTX_CORE_TOOLS]
+        elif 0 < ctx < 32000:
+            allowed = SMALL_CTX_CORE_TOOLS | MEDIUM_CTX_EXTRA_TOOLS
+            tools = [t for t in tools if t.get("name") in allowed]
+
+        return tools
 
     def _get_tool_handler_name(self, tool_name: str) -> str | None:
         """获取工具对应的 handler 名称（用于互斥/并发策略）"""
@@ -2232,8 +2258,15 @@ search_github → install_skill → 使用
 
     def _build_system_prompt_compiled_sync(self, task_description: str = "", session_type: str = "cli") -> str:
         """同步版本：启动时构建初始系统提示词（此时事件循环可能未就绪）"""
+        if getattr(self, "_org_context", None):
+            ctx = getattr(self, "_context", None)
+            if ctx and hasattr(ctx, "system") and ctx.system:
+                return ctx.system
+
+        ctx_window = self._get_raw_context_window()
         prompt = self.prompt_assembler._build_compiled_sync(
-            task_description, session_type=session_type
+            task_description, session_type=session_type, context_window=ctx_window,
+            is_sub_agent=self._is_sub_agent_call,
         )
         if self._custom_prompt_suffix:
             prompt += f"\n\n{self._custom_prompt_suffix}"
@@ -2254,8 +2287,15 @@ search_github → install_skill → 使用
         Returns:
             编译后的系统提示词
         """
+        if getattr(self, "_org_context", None):
+            ctx = getattr(self, "_context", None)
+            if ctx and hasattr(ctx, "system") and ctx.system:
+                return ctx.system
+
+        ctx_window = self._get_raw_context_window()
         prompt = await self.prompt_assembler.build_system_prompt_compiled(
-            task_description, session_type=session_type
+            task_description, session_type=session_type, context_window=ctx_window,
+            is_sub_agent=self._is_sub_agent_call,
         )
         if self._custom_prompt_suffix:
             prompt += f"\n\n{self._custom_prompt_suffix}"
@@ -2272,6 +2312,9 @@ search_github → install_skill → 使用
         Sub-agents are NOT given delegation capabilities to prevent
         recursive delegation chains (sub-agent spawning sub-sub-agents).
         """
+        if getattr(self, "_org_context", None):
+            return ""
+
         from ..agents.presets import SYSTEM_PRESETS
         from ..config import settings
 
@@ -2518,63 +2561,16 @@ create_agent(name="名称", description="描述", skills=["技能"], custom_prom
         return "\n".join(lines)
 
     def _get_max_context_tokens(self) -> int:
-        """
-        动态获取当前模型的上下文窗口大小
+        """动态获取当前模型的可用上下文 token 数。"""
+        return _shared_get_max_context_tokens(self.brain)
 
-        优先级：
-        1. 端点配置的 context_window 字段（输入+输出总 token 上限）
-        2. 如果 context_window 缺失/为 0，使用兜底值 200000
-        3. 减去 max_tokens（输出预留）和 10% buffer → 可用对话预算
-        4. 完全无法获取时 fallback 到 DEFAULT_MAX_CONTEXT_TOKENS (160K)
-
-        额外保护：
-        - context_window 异常小 (< 8192) 时使用兜底值
-        - 计算结果异常小 (< 4096) 时使用兜底值
-        """
-        FALLBACK_CONTEXT_WINDOW = 200000  # 兜底上下文窗口
-
-        try:
-            info = self.brain.get_current_model_info()
-            ep_name = info.get("name", "")
-            endpoints = self.brain._llm_client.endpoints
-            for ep in endpoints:
-                if ep.name == ep_name:
-                    ctx = getattr(ep, "context_window", 0) or 0
-
-                    # context_window 缺失或异常小 → 使用兜底值
-                    if ctx < 8192:
-                        ctx = FALLBACK_CONTEXT_WINDOW
-
-                    # context_window 是总上限，减去输出预留和 5% buffer
-                    output_reserve = ep.max_tokens or 4096
-                    output_reserve = min(output_reserve, ctx // 3)
-                    result = int((ctx - output_reserve) * 0.95)
-
-                    # 最终安全检查：结果不能太小
-                    if result < 4096:
-                        return DEFAULT_MAX_CONTEXT_TOKENS
-                    return result
-            return DEFAULT_MAX_CONTEXT_TOKENS
-        except Exception:
-            return DEFAULT_MAX_CONTEXT_TOKENS
+    def _get_raw_context_window(self) -> int:
+        """获取当前端点配置的原始 context_window 值（用于传递给预算系统）。"""
+        return _shared_get_raw_context_window(self.brain)
 
     def _estimate_tokens(self, text: str) -> int:
-        """
-        估算文本的 token 数量
-
-        使用中英文感知算法：中文约 1.5 字符/token，英文约 4 字符/token。
-        与 prompt.budget.estimate_tokens() 保持一致，避免各处估算值差异过大。
-        """
-        if not text:
-            return 0
-        # 统计中文字符数量
-        chinese_chars = sum(1 for c in text if "\u4e00" <= c <= "\u9fff")
-        total_chars = len(text)
-        english_chars = total_chars - chinese_chars
-        # 中文约 1.5 字符/token，英文约 4 字符/token
-        chinese_tokens = chinese_chars / 1.5
-        english_tokens = english_chars / 4
-        return max(int(chinese_tokens + english_tokens), 1)
+        """估算文本的 token 数量（中英文感知）。"""
+        return _shared_estimate_tokens(text)
 
     def _estimate_messages_tokens(self, messages: list[dict]) -> int:
         """估算消息列表的 token 数量（委托给 context_manager 的统一算法）"""
