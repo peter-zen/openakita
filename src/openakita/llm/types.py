@@ -217,6 +217,7 @@ class ToolUseBlock(ContentBlock):
     id: str
     name: str
     input: dict  # JSON 对象，非字符串
+    provider_extra: dict | None = None  # provider 透传字段（如 Gemini thought_signature）
     type: str = field(default="tool_use", init=False)
 
     def to_dict(self) -> dict:

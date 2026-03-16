@@ -188,11 +188,13 @@ def convert_tool_calls_from_openai(tool_calls: list[dict]) -> list[ToolUseBlock]
             else:
                 input_dict = arguments
 
+            extra = tc.get("extra_content") or None
             result.append(
                 ToolUseBlock(
                     id=tc.get("id", ""),
                     name=func.get("name", ""),
                     input=input_dict,
+                    provider_extra=extra,
                 )
             )
 
@@ -203,8 +205,9 @@ def convert_tool_calls_to_openai(tool_uses: list[ToolUseBlock]) -> list[dict]:
     """
     将内部工具调用转换为 OpenAI 格式
     """
-    return [
-        {
+    result = []
+    for tu in tool_uses:
+        tc: dict = {
             "id": tu.id,
             "type": "function",
             "function": {
@@ -212,8 +215,10 @@ def convert_tool_calls_to_openai(tool_uses: list[ToolUseBlock]) -> list[dict]:
                 "arguments": json.dumps(tu.input, ensure_ascii=False),
             },
         }
-        for tu in tool_uses
-    ]
+        if tu.provider_extra:
+            tc["extra_content"] = tu.provider_extra
+        result.append(tc)
+    return result
 
 
 def convert_tool_result_to_openai(tool_use_id: str, content: str, is_error: bool = False) -> dict:

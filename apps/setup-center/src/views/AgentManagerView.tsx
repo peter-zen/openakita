@@ -3,6 +3,13 @@ import { useTranslation } from "react-i18next";
 import { IconBot, IconRefresh, IconPlus, IconEdit, IconTrash, IconDownload, IconUpload } from "../icons";
 import { safeFetch } from "../providers";
 import { logger, saveFileDialog, IS_TAURI } from "../platform";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type AgentProfile = {
   id: string;
@@ -980,216 +987,183 @@ export function AgentManagerView({
         </div>
       )}
 
-      {/* Editor Slide-in Panel */}
-      {editorOpen && (
-        <div
-          style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
-            backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)",
-            display: "flex", justifyContent: "flex-end", zIndex: 1000,
-          }}
-          onClick={closeEditor}
-        >
-          <div
-            style={{
-              width: 460, maxWidth: "90vw", height: "100%",
-              background: "var(--panel)", boxShadow: "-4px 0 24px rgba(0,0,0,0.15)",
-              overflowY: "auto", padding: 24,
-              animation: "slideIn 0.2s ease-out",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <style>{`@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }`}</style>
+      {/* Editor Sheet */}
+      <Sheet open={editorOpen} onOpenChange={(open) => { if (!open) closeEditor(); }}>
+        <SheetContent side="right" className="w-[460px] max-w-[90vw] overflow-y-auto p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <SheetHeader className="px-6 pt-6 pb-2">
+            <SheetTitle>{isCreating ? t("agentManager.create") : t("agentManager.edit")}</SheetTitle>
+            <SheetDescription className="sr-only">
+              {isCreating ? "Create a new agent profile" : "Edit agent profile"}
+            </SheetDescription>
+          </SheetHeader>
 
-            <h3 style={{ margin: "0 0 20px 0", fontSize: 16 }}>
-              {isCreating ? t("agentManager.create") : t("agentManager.edit")}
-            </h3>
-
+          <div className="flex flex-col gap-4 px-6 pb-6">
             {/* ID */}
-            <label style={labelStyle}>{t("agentManager.id")}</label>
-            <input
-              value={editingProfile.id}
-              onChange={(e) => setEditingProfile((p) => ({ ...p, id: e.target.value }))}
-              disabled={!isCreating}
-              style={{ ...inputStyle, opacity: isCreating ? 1 : 0.5, fontFamily: "monospace", fontSize: 13 }}
-              placeholder="my-agent"
-            />
+            <div className="space-y-1.5">
+              <Label className="text-xs opacity-70">{t("agentManager.id")}</Label>
+              <Input
+                value={editingProfile.id}
+                onChange={(e) => setEditingProfile((p) => ({ ...p, id: e.target.value }))}
+                disabled={!isCreating}
+                placeholder="my-agent"
+                className="font-mono text-[13px]"
+              />
+            </div>
 
             {/* Name */}
-            <label style={labelStyle}>{t("agentManager.name")}</label>
-            <input
-              value={editingProfile.name}
-              onChange={(e) => {
-                const name = e.target.value;
-                setEditingProfile((p) => ({
-                  ...p,
-                  name,
-                  ...(isCreating && !p.id ? { id: generateId(name) } : {}),
-                }));
-              }}
-              style={inputStyle}
-              placeholder="My Agent"
-            />
+            <div className="space-y-1.5">
+              <Label className="text-xs opacity-70">{t("agentManager.name")}</Label>
+              <Input
+                value={editingProfile.name}
+                onChange={(e) => {
+                  const name = e.target.value;
+                  setEditingProfile((p) => ({
+                    ...p,
+                    name,
+                    ...(isCreating && !p.id ? { id: generateId(name) } : {}),
+                  }));
+                }}
+                placeholder="My Agent"
+              />
+            </div>
 
             {/* Description */}
-            <label style={labelStyle}>{t("agentManager.description")}</label>
-            <input
-              value={editingProfile.description}
-              onChange={(e) => setEditingProfile((p) => ({ ...p, description: e.target.value }))}
-              style={inputStyle}
-              placeholder="A brief description..."
-            />
+            <div className="space-y-1.5">
+              <Label className="text-xs opacity-70">{t("agentManager.description")}</Label>
+              <Input
+                value={editingProfile.description}
+                onChange={(e) => setEditingProfile((p) => ({ ...p, description: e.target.value }))}
+                placeholder="A brief description..."
+              />
+            </div>
 
             {/* Category */}
-            <label style={labelStyle}>{t("agentManager.category")}</label>
-            <select
-              value={editingProfile.category || ""}
-              onChange={(e) => setEditingProfile((p) => ({ ...p, category: e.target.value }))}
-              style={{ ...inputStyle, cursor: "pointer" }}
-            >
-              <option value="">—</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>{cat.label}</option>
-              ))}
-            </select>
+            <div className="space-y-1.5">
+              <Label className="text-xs opacity-70">{t("agentManager.category")}</Label>
+              <Select
+                value={editingProfile.category || "_none_"}
+                onValueChange={(v) => setEditingProfile((p) => ({ ...p, category: v === "_none_" ? "" : v }))}
+              >
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none_">—</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>{cat.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-            {/* Icon + Color row */}
-            <div style={{ display: "flex", gap: 12, marginBottom: 4 }}>
-              <div style={{ flex: 1 }}>
-                <label style={labelStyle}>{t("agentManager.icon")}</label>
-                <div style={{ position: "relative" }}>
-                  <button
-                    onClick={() => setEmojiPickerOpen((v) => !v)}
-                    style={{
-                      ...inputStyle,
-                      cursor: "pointer", fontSize: 22, textAlign: "center",
-                      padding: "6px", width: "100%", display: "flex",
-                      alignItems: "center", justifyContent: "center", minHeight: 40,
-                    }}
-                  >
-                    {editingProfile.icon.startsWith("svg:")
-                      ? <SvgIcon name={editingProfile.icon.slice(4)} size={24} />
-                      : editingProfile.icon}
-                  </button>
-                  {emojiPickerOpen && (
-                    <div style={{
-                      position: "absolute", top: "100%", left: 0, zIndex: 10,
-                      background: "var(--panel)", border: "1px solid var(--line)",
-                      borderRadius: 10, padding: 0, width: 260,
-                      boxShadow: "0 8px 24px rgba(0,0,0,0.15)", overflow: "hidden",
-                    }}>
-                      <div style={{
-                        display: "flex", borderBottom: "1px solid var(--line)",
-                        overflowX: "auto", flexShrink: 0,
-                      }}>
-                        {Object.entries(ICON_CATEGORIES).map(([key, cat]) => (
-                          <button
-                            key={key}
-                            onClick={() => setIconCat(key)}
-                            style={{
-                              flex: "0 0 auto", padding: "7px 10px", fontSize: 12,
-                              border: "none", cursor: "pointer", whiteSpace: "nowrap",
-                              background: iconCat === key ? "var(--primary-bg, rgba(59,130,246,0.1))" : "transparent",
-                              fontWeight: iconCat === key ? 700 : 400,
-                              color: iconCat === key ? "var(--primary, #3b82f6)" : "inherit",
-                              borderBottom: iconCat === key ? "2px solid var(--primary, #3b82f6)" : "2px solid transparent",
-                            }}
-                          >
-                            {cat.label}
-                          </button>
-                        ))}
-                      </div>
-                      <div style={{
-                        display: "flex", flexWrap: "wrap", gap: 2, padding: 8,
-                        maxHeight: 180, overflowY: "auto",
-                      }}>
-                        {(ICON_CATEGORIES[iconCat]?.icons || []).map((iconVal) => {
-                          const isSvg = iconVal.startsWith("svg:");
-                          const selected = editingProfile.icon === iconVal;
-                          return (
-                            <button
-                              key={iconVal}
-                              title={isSvg ? (SVG_ICONS[iconVal.slice(4)]?.label || iconVal.slice(4)) : undefined}
-                              onClick={() => {
-                                setEditingProfile((p) => ({ ...p, icon: iconVal }));
-                                setEmojiPickerOpen(false);
-                              }}
-                              style={{
-                                width: 38, height: 38, fontSize: isSvg ? 0 : 21, border: "none",
-                                borderRadius: 8, cursor: "pointer", transition: "background 0.12s",
-                                background: selected ? "var(--line)" : "transparent",
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                              }}
-                              onMouseEnter={(e) => { if (!selected) e.currentTarget.style.background = "var(--hover, rgba(0,0,0,0.05))"; }}
-                              onMouseLeave={(e) => { e.currentTarget.style.background = selected ? "var(--line)" : "transparent"; }}
-                            >
-                              {isSvg ? <SvgIcon name={iconVal.slice(4)} size={22} /> : iconVal}
-                            </button>
-                          );
-                        })}
-                      </div>
+            {/* Icon */}
+            <div className="space-y-1.5">
+              <Label className="text-xs opacity-70">{t("agentManager.icon")}</Label>
+              <div className="relative">
+                <Button
+                  variant="outline"
+                  className="h-9 w-9 text-[22px] p-0"
+                  onClick={() => setEmojiPickerOpen((v) => !v)}
+                >
+                  {editingProfile.icon.startsWith("svg:")
+                    ? <SvgIcon name={editingProfile.icon.slice(4)} size={24} />
+                    : editingProfile.icon}
+                </Button>
+                {emojiPickerOpen && (
+                  <div className="absolute top-full left-0 z-10 w-[260px] rounded-lg border bg-popover shadow-lg overflow-hidden">
+                    <div className="flex border-b overflow-x-auto shrink-0">
+                      {Object.entries(ICON_CATEGORIES).map(([key, cat]) => (
+                        <button
+                          key={key}
+                          data-slot="skip"
+                          onClick={() => setIconCat(key)}
+                          className={`flex-none px-2.5 py-1.5 text-xs border-b-2 cursor-pointer whitespace-nowrap transition-colors ${
+                            iconCat === key
+                              ? "border-primary text-primary font-bold bg-primary/10"
+                              : "border-transparent hover:bg-accent"
+                          }`}
+                        >
+                          {cat.label}
+                        </button>
+                      ))}
                     </div>
-                  )}
-                </div>
+                    <div className="flex flex-wrap gap-0.5 p-2 max-h-[180px] overflow-y-auto">
+                      {(ICON_CATEGORIES[iconCat]?.icons || []).map((iconVal) => {
+                        const isSvg = iconVal.startsWith("svg:");
+                        const selected = editingProfile.icon === iconVal;
+                        return (
+                          <button
+                            key={iconVal}
+                            data-slot="skip"
+                            title={isSvg ? (SVG_ICONS[iconVal.slice(4)]?.label || iconVal.slice(4)) : undefined}
+                            onClick={() => {
+                              setEditingProfile((p) => ({ ...p, icon: iconVal }));
+                              setEmojiPickerOpen(false);
+                            }}
+                            className={`w-[38px] h-[38px] flex items-center justify-center rounded-lg cursor-pointer border-none transition-colors ${
+                              selected ? "bg-accent" : "bg-transparent hover:bg-accent/50"
+                            }`}
+                            style={{ fontSize: isSvg ? 0 : 21 }}
+                          >
+                            {isSvg ? <SvgIcon name={iconVal.slice(4)} size={22} /> : iconVal}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div style={{ flex: 1 }}>
-                <label style={labelStyle}>{t("agentManager.color")}</label>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <input
-                    type="color"
-                    value={editingProfile.color}
-                    onChange={(e) => setEditingProfile((p) => ({ ...p, color: e.target.value }))}
-                    style={{ width: 40, height: 36, border: "none", cursor: "pointer", borderRadius: 6, padding: 0, background: "none" }}
-                  />
-                  <input
-                    value={editingProfile.color}
-                    onChange={(e) => setEditingProfile((p) => ({ ...p, color: e.target.value }))}
-                    style={{ ...inputStyle, flex: 1, fontFamily: "monospace", fontSize: 13 }}
-                  />
-                </div>
+            </div>
+
+            {/* Color */}
+            <div className="space-y-1.5">
+              <Label className="text-xs opacity-70">{t("agentManager.color")}</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={editingProfile.color}
+                  onChange={(e) => setEditingProfile((p) => ({ ...p, color: e.target.value }))}
+                  style={{ width: 36, height: 36, minWidth: 36, flexShrink: 0, border: "none", cursor: "pointer", borderRadius: 6, padding: 0, background: "none" }}
+                />
+                <Input
+                  value={editingProfile.color}
+                  onChange={(e) => setEditingProfile((p) => ({ ...p, color: e.target.value }))}
+                  className="flex-1 min-w-0 font-mono text-[13px]"
+                />
               </div>
             </div>
 
             {/* Skills Mode */}
-            <label style={labelStyle}>{t("agentManager.skills")}</label>
-            <select
-              value={editingProfile.skills_mode}
-              onChange={(e) => setEditingProfile((p) => ({ ...p, skills_mode: e.target.value }))}
-              style={{ ...inputStyle, cursor: "pointer" }}
-            >
-              <option value="all">{t("agentManager.skillsModeAll")}</option>
-              <option value="inclusive">{t("agentManager.skillsModeInclusive")}</option>
-              <option value="exclusive">{t("agentManager.skillsModeExclusive")}</option>
-            </select>
+            <div className="space-y-1.5">
+              <Label className="text-xs opacity-70">{t("agentManager.skills")}</Label>
+              <Select
+                value={editingProfile.skills_mode}
+                onValueChange={(v) => setEditingProfile((p) => ({ ...p, skills_mode: v }))}
+              >
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("agentManager.skillsModeAll")}</SelectItem>
+                  <SelectItem value="inclusive">{t("agentManager.skillsModeInclusive")}</SelectItem>
+                  <SelectItem value="exclusive">{t("agentManager.skillsModeExclusive")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
             {/* Skills multi-select */}
             {editingProfile.skills_mode !== "all" && availableSkills.length > 0 && (
-              <div style={{
-                maxHeight: 220, overflowY: "auto", border: "1px solid var(--line)",
-                borderRadius: 8, padding: 4, marginBottom: 12,
-              }}>
+              <div className="max-h-[220px] overflow-y-auto rounded-lg border p-1">
                 {availableSkills.map((skill) => {
                   const checked = editingProfile.skills.includes(skill.skillId);
                   return (
                     <label
                       key={skill.skillId}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 8,
-                        padding: "6px 10px", borderRadius: 6, cursor: "pointer",
-                        fontSize: 13, lineHeight: 1.4,
-                        background: checked ? "var(--primary-bg, rgba(59,130,246,0.08))" : "transparent",
-                        transition: "background 0.15s",
-                      }}
-                      onMouseEnter={(e) => { if (!checked) e.currentTarget.style.background = "var(--hover, rgba(0,0,0,0.04))"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = checked ? "var(--primary-bg, rgba(59,130,246,0.08))" : "transparent"; }}
+                      className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-md cursor-pointer text-[13px] transition-colors ${
+                        checked ? "bg-primary/8" : "hover:bg-accent/50"
+                      }`}
                     >
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={checked}
-                        onChange={() => toggleSkill(skill.skillId)}
-                        style={{ accentColor: "var(--primary, #3b82f6)", flexShrink: 0, width: 16, height: 16 }}
+                        onCheckedChange={() => toggleSkill(skill.skillId)}
                       />
-                      <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <span className="flex-1 min-w-0 truncate">
                         {skill.name_i18n?.[i18n.language?.startsWith("zh") ? "zh" : i18n.language || "zh"] || skill.name}
                       </span>
                     </label>
@@ -1199,74 +1173,56 @@ export function AgentManagerView({
             )}
 
             {/* Preferred Endpoint */}
-            <label style={labelStyle}>{t("agentManager.preferredEndpoint")}</label>
-            <select
-              value={editingProfile.preferred_endpoint || ""}
-              onChange={(e) => setEditingProfile((p) => ({ ...p, preferred_endpoint: e.target.value || null }))}
-              style={{ ...inputStyle, cursor: "pointer" }}
-            >
-              <option value="">{t("agentManager.preferredEndpointAuto")}</option>
-              {availableModels.map((m) => (
-                <option key={m.name} value={m.name} disabled={m.status !== "healthy"}>
-                  {m.name} ({m.model}){m.status !== "healthy" ? " ⚠" : ""}
-                </option>
-              ))}
-            </select>
+            <div className="space-y-1.5">
+              <Label className="text-xs opacity-70">{t("agentManager.preferredEndpoint")}</Label>
+              <Select
+                value={editingProfile.preferred_endpoint || "_auto_"}
+                onValueChange={(v) => setEditingProfile((p) => ({ ...p, preferred_endpoint: v === "_auto_" ? null : v }))}
+              >
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_auto_">{t("agentManager.preferredEndpointAuto")}</SelectItem>
+                  {availableModels.map((m) => (
+                    <SelectItem key={m.name} value={m.name} disabled={m.status !== "healthy"}>
+                      {m.name} ({m.model}){m.status !== "healthy" ? " ⚠" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             {/* Custom Prompt */}
-            <label style={labelStyle}>{t("agentManager.prompt")}</label>
-            <textarea
-              value={editingProfile.custom_prompt}
-              onChange={(e) => setEditingProfile((p) => ({ ...p, custom_prompt: e.target.value }))}
-              maxLength={5000}
-              rows={6}
-              style={{
-                ...inputStyle, resize: "vertical", fontFamily: "inherit",
-                minHeight: 100, lineHeight: 1.5,
-              }}
-              placeholder="Additional system prompt for this agent..."
-            />
-            <div style={{ textAlign: "right", fontSize: 12, color: editingProfile.custom_prompt.length > 4500 ? "#e74c3c" : "#999", marginTop: 2 }}>
-              {editingProfile.custom_prompt.length} / 5000
+            <div className="space-y-1.5">
+              <Label className="text-xs opacity-70">{t("agentManager.prompt")}</Label>
+              <Textarea
+                value={editingProfile.custom_prompt}
+                onChange={(e) => setEditingProfile((p) => ({ ...p, custom_prompt: e.target.value }))}
+                maxLength={5000}
+                rows={6}
+                className="min-h-[100px] resize-y leading-relaxed"
+                placeholder="Additional system prompt for this agent..."
+              />
+              <p className={`text-right text-xs ${editingProfile.custom_prompt.length > 4500 ? "text-destructive" : "text-muted-foreground"}`}>
+                {editingProfile.custom_prompt.length} / 5000
+              </p>
             </div>
 
             {/* Actions */}
-            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-              <button
-                onClick={closeEditor}
-                style={{
-                  flex: 1, padding: "8px 0", borderRadius: 8, border: "1px solid var(--line)",
-                  background: "var(--panel)", cursor: "pointer", fontSize: 13,
-                }}
-              >
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" className="flex-1" onClick={closeEditor}>
                 {t("agentManager.cancel")}
-              </button>
-              <button
+              </Button>
+              <Button
+                className="flex-1"
                 onClick={handleSave}
                 disabled={saving || !editingProfile.name.trim()}
-                style={{
-                  flex: 1, padding: "8px 0", borderRadius: 8, border: "none",
-                  background: "var(--primary, #3b82f6)", color: "#fff",
-                  cursor: saving ? "wait" : "pointer", fontSize: 13, fontWeight: 600,
-                  opacity: !editingProfile.name.trim() ? 0.5 : 1,
-                }}
               >
                 {saving ? t("common.loading") : t("agentManager.save")}
-              </button>
+              </Button>
             </div>
           </div>
-        </div>
-      )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
-
-const labelStyle: React.CSSProperties = {
-  display: "block", fontSize: 12, fontWeight: 600, marginBottom: 4, marginTop: 12, opacity: 0.7,
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%", padding: "8px 10px", borderRadius: 8,
-  border: "1px solid var(--line)", background: "var(--bg, #fff)",
-  fontSize: 13, outline: "none", boxSizing: "border-box",
-};

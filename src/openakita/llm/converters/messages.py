@@ -180,8 +180,9 @@ def _convert_single_message_to_openai(
 
             # 工具调用
             if tool_uses:
-                assistant_msg["tool_calls"] = [
-                    {
+                tc_list = []
+                for tu in tool_uses:
+                    tc: dict = {
                         "id": tu.id,
                         "type": "function",
                         "function": {
@@ -189,8 +190,10 @@ def _convert_single_message_to_openai(
                             "arguments": _dict_to_json_string(tu.input),
                         },
                     }
-                    for tu in tool_uses
-                ]
+                    if tu.provider_extra:
+                        tc["extra_content"] = tu.provider_extra
+                    tc_list.append(tc)
+                assistant_msg["tool_calls"] = tc_list
 
             result.append(assistant_msg)
         else:
@@ -269,11 +272,13 @@ def convert_messages_from_openai(messages: list[dict]) -> tuple[list[Message], s
             tool_calls = msg.get("tool_calls", [])
             for tc in tool_calls:
                 func = tc.get("function", {})
+                extra = tc.get("extra_content") or None
                 content_blocks.append(
                     ToolUseBlock(
                         id=tc.get("id", ""),
                         name=func.get("name", ""),
                         input=_json_string_to_dict(func.get("arguments", "{}")),
+                        provider_extra=extra,
                     )
                 )
 
