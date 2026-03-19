@@ -627,7 +627,7 @@ async def list_models_api(body: ListModelsRequest):
         if not api_key:
             api_key = "local"  # placeholder for local providers
 
-        if api_type == "openai":
+        if api_type in ("openai", "openai_responses"):
             models = await _list_models_openai(api_key, base_url, provider_slug)
         elif api_type == "anthropic":
             models = await _list_models_anthropic(api_key, base_url, provider_slug)

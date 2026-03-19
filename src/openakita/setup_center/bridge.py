@@ -362,7 +362,7 @@ async def list_models(api_type: str, base_url: str, provider_slug: str | None, a
     # 本地服务商（Ollama/LM Studio 等）不需要 API Key，允许空值
     # 前端会传入 placeholder key，但也兼容完全为空的情况
 
-    if api_type == "openai":
+    if api_type in ("openai", "openai_responses"):
         _json_print(await _list_models_openai(api_key, base_url, provider_slug))
         return
     if api_type == "anthropic":
@@ -1221,13 +1221,16 @@ def _git_clone(args: list[str]) -> None:
         )
 
 
-def _parse_github_url(url: str) -> tuple[str, str] | None:
-    """从 HTTPS GitHub URL 中提取 (owner, repo)，非 GitHub URL 返回 None。"""
-    import re
+def _parse_github_url(url: str) -> tuple[str, str, str | None] | None:
+    """从 HTTPS GitHub URL 中提取 (owner, repo, subdir)，非 GitHub URL 返回 None。
 
-    m = re.match(r"https?://github\.com/([^/]+)/([^/.]+)", url)
-    if m:
-        return m.group(1), m.group(2)
+    委托给 skills.source_url 的统一解析器，保持 bridge 接口为 plain tuple。
+    """
+    from openakita.skills.source_url import parse_github_source
+
+    result = parse_github_source(url)
+    if result is not None:
+        return result.owner, result.repo, result.subdir
     return None
 
 
@@ -1353,21 +1356,53 @@ def install_skill(workspace_dir: str, url: str) -> None:
             _download_github_zip(owner, repo, target)
 
     elif url.startswith("http://") or url.startswith("https://"):
-        skill_name = url.rstrip("/").split("/")[-1].replace(".git", "")
-        target = skills_dir / skill_name
-
-        _ensure_target_available(target, url)
-
         gh = _parse_github_url(url)
         ge = _parse_gitee_url(url)
-        if ge:
+
+        if gh:
+            # GitHub URL（含 blob/tree）— 始终用规范化的仓库 URL 克隆
+            owner, repo, gh_subdir = gh
+            skill_name = (gh_subdir or "").rsplit("/", 1)[-1] if gh_subdir else repo
+            skill_name = _sanitize_skill_dir_name(skill_name)
+            target = skills_dir / skill_name
+            _ensure_target_available(target, url)
+
+            if gh_subdir:
+                # 有子路径：克隆到临时目录，再提取子目录
+                import shutil
+                import tempfile
+                tmp_parent = Path(tempfile.mkdtemp(prefix="openakita_gh_"))
+                tmp_dir = tmp_parent / "repo"
+                try:
+                    repo_url = f"https://github.com/{owner}/{repo}.git"
+                    if _has_git():
+                        _git_clone(["git", "clone", "--depth", "1", repo_url, str(tmp_dir)])
+                    else:
+                        _download_github_zip(owner, repo, tmp_dir)
+                    source_dir = tmp_dir / gh_subdir
+                    if not source_dir.is_dir():
+                        raise ValueError(f"仓库 {owner}/{repo} 中未找到子目录: {gh_subdir}")
+                    shutil.copytree(str(source_dir), str(target))
+                finally:
+                    shutil.rmtree(str(tmp_parent), ignore_errors=True)
+            else:
+                if _has_git():
+                    repo_url = f"https://github.com/{owner}/{repo}.git"
+                    _git_clone(["git", "clone", "--depth", "1", repo_url, str(target)])
+                else:
+                    _download_github_zip(owner, repo, target)
+        elif ge:
+            skill_name = url.rstrip("/").split("/")[-1].replace(".git", "")
+            target = skills_dir / skill_name
+            _ensure_target_available(target, url)
             if _has_git():
                 _git_clone(["git", "clone", "--depth", "1", url, str(target)])
             else:
                 _download_gitee_zip(ge[0], ge[1], target)
-        elif gh and not _has_git():
-            _download_github_zip(gh[0], gh[1], target)
         else:
+            skill_name = url.rstrip("/").split("/")[-1].replace(".git", "")
+            target = skills_dir / skill_name
+            _ensure_target_available(target, url)
             _git_clone(["git", "clone", "--depth", "1", url, str(target)])
 
     elif _looks_like_github_shorthand(url):
