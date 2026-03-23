@@ -2060,7 +2060,8 @@ class WeWorkWsAdapter(ChannelAdapter):
                     media.status = MediaStatus.FAILED
                     raise
 
-            safe_filename = Path(filename).name or "download"
+            from openakita.channels.base import sanitize_filename
+            safe_filename = sanitize_filename(Path(filename).name or "download")
             local_path = self.media_dir / f"{media.id}_{safe_filename}"
             await asyncio.get_running_loop().run_in_executor(
                 None, local_path.write_bytes, data

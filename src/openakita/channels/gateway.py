@@ -3178,6 +3178,7 @@ class MessageGateway:
                     try:
                         mime = fil.mime_type or ""
                         suffix = Path(fil.local_path).suffix.lower()
+                        _fname = fil.filename or Path(fil.local_path).name
                         if suffix == ".pdf" or "pdf" in mime:
                             file_data = base64.b64encode(
                                 Path(fil.local_path).read_bytes()
@@ -3189,13 +3190,49 @@ class MessageGateway:
                                     "media_type": "application/pdf",
                                     "data": file_data,
                                 },
-                                "filename": fil.filename or Path(fil.local_path).name,
+                                "filename": _fname,
                                 "local_path": fil.local_path,
                             })
                             logger.info(f"PDF file encoded: {fil.local_path}")
+                        elif suffix in (
+                            ".md", ".txt", ".csv", ".json", ".jsonl",
+                            ".xml", ".yaml", ".yml", ".toml", ".ini", ".cfg",
+                            ".log", ".py", ".js", ".ts", ".jsx", ".tsx",
+                            ".html", ".htm", ".css", ".sql", ".sh", ".bat",
+                            ".ps1", ".java", ".c", ".cpp", ".h", ".hpp",
+                            ".go", ".rs", ".rb", ".php", ".lua", ".r",
+                            ".swift", ".kt", ".scala", ".conf", ".env",
+                            ".gitignore", ".dockerfile", ".makefile",
+                        ) or mime.startswith("text/"):
+                            _TEXT_FILE_SIZE_LIMIT = 512 * 1024  # 512KB
+                            _fpath = Path(fil.local_path)
+                            if _fpath.stat().st_size <= _TEXT_FILE_SIZE_LIMIT:
+                                _content = _fpath.read_text(
+                                    encoding="utf-8", errors="replace",
+                                )
+                                input_text += (
+                                    f"\n\n--- 文件: {_fname} ---\n"
+                                    f"{_content}\n"
+                                    f"--- 文件结束 ---"
+                                )
+                                logger.info(
+                                    f"Text file injected: {fil.local_path} "
+                                    f"({len(_content)} chars)"
+                                )
+                            else:
+                                input_text += (
+                                    f"\n[附件: {_fname} ({mime or suffix}), "
+                                    f"文件过大无法内联，本地路径: {fil.local_path}]"
+                                )
+                                logger.info(
+                                    f"Text file too large for inline, "
+                                    f"path provided: {fil.local_path}"
+                                )
                         else:
-                            # 非 PDF 文件，作为文本描述
-                            input_text += f"\n[附件: {fil.filename or Path(fil.local_path).name} ({mime or suffix})]"
+                            input_text += (
+                                f"\n[附件: {_fname} ({mime or suffix}), "
+                                f"本地路径: {fil.local_path}]"
+                            )
                     except Exception as e:
                         logger.error(f"Failed to process file: {e}")
 

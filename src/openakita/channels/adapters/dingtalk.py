@@ -1943,7 +1943,8 @@ class DingTalkAdapter(ChannelAdapter):
         response = await self._http_client.get(download_url, timeout=60.0)
         response.raise_for_status()
 
-        safe_name = Path(media.filename).name or "download"
+        from openakita.channels.base import sanitize_filename
+        safe_name = sanitize_filename(Path(media.filename).name or "download")
         local_path = self.media_dir / safe_name
         with open(local_path, "wb") as f:
             f.write(response.content)

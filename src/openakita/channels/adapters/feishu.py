@@ -2419,8 +2419,9 @@ class FeishuAdapter(ChannelAdapter):
         if not getattr(response, "file", None):
             raise RuntimeError(f"Download succeeded but response.file is empty for {media.file_id}")
 
-        # 保存文件
-        safe_name = Path(media.filename).name or "download"
+        # 保存文件（过滤 Windows 非法字符如 : * ? 等）
+        from openakita.channels.base import sanitize_filename
+        safe_name = sanitize_filename(Path(media.filename).name or "download")
         local_path = self.media_dir / safe_name
         with open(local_path, "wb") as f:
             f.write(response.file.read())
