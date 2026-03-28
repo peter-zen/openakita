@@ -2156,10 +2156,18 @@ export function ChatView({
     return () => document.removeEventListener("mousedown", handler);
   }, [agentMenuOpen]);
 
-  // Restore conversations from backend when localStorage is empty (e.g. after Tauri restart)
-
   // 启动后后台对账会话列表：本地先展示，后端异步增量合并，避免"今天新会话缺失"
+  // 同时检测 data_epoch 是否变化（factory reset / 数据重置）
   const sessionRestoreAttempted = useRef(false);
+
+  // 后端断开时重置对账标志，使重连后能重新对账 + 检测 epoch 变化
+  // （覆盖 factory reset 后不刷新页面的场景）
+  useEffect(() => {
+    if (!serviceRunning) {
+      sessionRestoreAttempted.current = false;
+    }
+  }, [serviceRunning]);
+
   useEffect(() => {
     if (!serviceRunning || sessionRestoreAttempted.current) return;
     sessionRestoreAttempted.current = true;
@@ -2173,13 +2181,13 @@ export function ChatView({
         const backendSessions: { id: string; title: string; lastMessage: string; timestamp: number; messageCount: number; agentProfileId?: string }[] = data.sessions || [];
         if (cancelled) return;
 
-        // ── Factory reset / data wipe detection ──
-        // Two complementary checks:
-        // 1) data_epoch mismatch: backend's data/ was recreated (epoch changed)
-        // 2) ready + 0 sessions: backend is fully initialized but has nothing —
-        //    local conversations are orphaned (handles bootstrap: first time the
-        //    epoch code runs, cached is null so #1 cannot fire).
-        const backendReady = data.ready !== false;
+        // ── Factory reset detection (epoch-based only) ──
+        // Only clear local data when data_epoch actually changes, which signals
+        // that the backend's data/ directory was recreated (true factory reset).
+        // We intentionally do NOT wipe localStorage when "ready + 0 sessions",
+        // because that can be a false positive: e.g. a version upgrade changes
+        // Session serialisation and _load_sessions silently skips all old
+        // sessions, yet sessions.json on disk is still intact.
         const epoch = data.data_epoch as string | undefined;
         const EPOCH_KEY = "openakita_data_epoch";
 
@@ -2197,19 +2205,6 @@ export function ChatView({
             setMessages([]);
             return;
           }
-        }
-
-        if (backendReady && backendSessions.length === 0) {
-          setConversations((prev) => {
-            if (prev.length === 0) return prev;
-            for (const c of prev) {
-              try { localStorage.removeItem(STORAGE_KEY_MSGS_PREFIX + c.id); } catch {}
-            }
-            return [];
-          });
-          setActiveConvId(null);
-          setMessages([]);
-          return;
         }
         if (backendSessions.length === 0) return;
 

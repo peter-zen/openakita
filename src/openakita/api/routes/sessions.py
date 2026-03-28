@@ -29,7 +29,7 @@ async def list_sessions(request: Request, channel: str = "desktop"):
     Returns a list of conversations with metadata, ordered by last_active desc.
     """
     session_manager = getattr(request.app.state, "session_manager", None)
-    if not session_manager:
+    if not session_manager or not getattr(session_manager, "_sessions_loaded", False):
         wac = getattr(request.app.state, "web_access_config", None)
         return {"sessions": [], "data_epoch": wac.data_epoch if wac else "", "ready": False}
 
