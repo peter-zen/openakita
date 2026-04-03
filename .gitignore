@@ -29,6 +29,7 @@ wheels/
 venv/
 ENV/
 env/
+.env.bak
 
 # IDE
 .idea/
