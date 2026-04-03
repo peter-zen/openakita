@@ -101,6 +101,7 @@ export function isQianFanCodingPlanProvider(providerSlug: string | null, baseUrl
 export function miniMaxFallbackModels(providerSlug: string | null): ListedModel[] {
   const ids = [
     "MiniMax-M2.7",
+    "MiniMax-M2.7-highspeed",
     "MiniMax-M2.5",
     "MiniMax-M2.5-highspeed",
     "MiniMax-M2.1",

@@ -437,6 +437,22 @@ MODEL_CAPABILITIES = {
     "minimax": {
         # MiniMax 官方（不支持 /v1/models 端点）
         # M2+ 系列均为 thinking-only 模型，不接受 enable_thinking=False
+        "minimax-m2.7": {
+            "text": True,
+            "vision": False,
+            "video": False,
+            "tools": True,
+            "thinking": True,
+            "thinking_only": True,
+        },
+        "minimax-m2.7-highspeed": {
+            "text": True,
+            "vision": False,
+            "video": False,
+            "tools": True,
+            "thinking": True,
+            "thinking_only": True,
+        },
         "minimax-m2.5": {
             "text": True,
             "vision": False,
