@@ -12,8 +12,10 @@ Responses API 与 Chat Completions 的核心差异：
 - 流式事件: 语义化事件名 (response.output_text.delta 等)
 """
 
+import hashlib
 import json
 import logging
+import re
 from collections.abc import AsyncIterator
 
 from ..converters.messages import convert_messages_to_responses
@@ -56,10 +58,121 @@ class OpenAIResponsesProvider(OpenAIProvider):
 
     def __init__(self, config: EndpointConfig):
         super().__init__(config)
+        self._prompt_cache_key_unsupported = False
 
     @property
     def _api_url(self) -> str:
         return f"{self.base_url}/responses"
+
+    _CACHE_KEY_DYNAMIC_HEADINGS = (
+        "## Runtime",
+        "## User",
+        "## 运行环境",
+        "## 当前会话",
+        "## 系统概况",
+        "## 你的记忆系统",
+        "## 用户设定的规则（必须遵守）",
+        "## 核心记忆",
+        "## 历史经验（执行任务前请参考）",
+        "## 相关记忆（自动检索）",
+        "## 关系型记忆（图检索）",
+    )
+
+    @classmethod
+    def _strip_markdown_section(cls, text: str, heading: str) -> str:
+        pattern = rf"(?ms)^{re.escape(heading)}\n.*?(?=^## |\Z)"
+        return re.sub(pattern, "", text)
+
+    @classmethod
+    def _normalize_instructions_for_cache_key(cls, instructions: str) -> str:
+        if not instructions:
+            return ""
+
+        normalized = instructions
+        for heading in cls._CACHE_KEY_DYNAMIC_HEADINGS:
+            normalized = cls._strip_markdown_section(normalized, heading)
+
+        line_patterns = (
+            r"(?m)^- \*\*当前时间\*\*:.*\n?",
+            r"(?m)^- \*\*会话 ID\*\*:.*\n?",
+            r"(?m)^- \*\*已有消息\*\*:.*\n?",
+            r"(?m)^- \*\*子 Agent 协作记录\*\*:.*\n?",
+            r"(?m)^- \*\*当前模型\*\*:.*\n?",
+            r"(?m)^- \*\*当前工作目录\*\*:.*\n?",
+            r"(?m)^- \*\*PATH 可用工具\*\*:.*\n?",
+        )
+        for pattern in line_patterns:
+            normalized = re.sub(pattern, "", normalized)
+
+        normalized = re.sub(r"\n{3,}", "\n\n", normalized)
+        return normalized.strip()
+
+    def _build_prompt_cache_key(self, body: dict) -> str | None:
+        instructions = self._normalize_instructions_for_cache_key(
+            str(body.get("instructions", "") or "")
+        )
+        tools = body.get("tools", []) or []
+
+        if not instructions and not tools:
+            return None
+
+        basis = {
+            "provider": self.config.provider,
+            "model": self.config.model,
+            "instructions": instructions[:12000],
+            "tools": tools,
+        }
+        basis_json = json.dumps(
+            basis,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        digest = hashlib.sha256(basis_json.encode("utf-8")).hexdigest()[:16]
+        model_slug = re.sub(r"[^a-z0-9]+", "-", self.config.model.lower()).strip("-")[:32] or "unknown"
+        return f"oak:v1:{model_slug}:{digest}"
+
+    def _should_auto_inject_prompt_cache_key(self) -> bool:
+        return not self._prompt_cache_key_unsupported
+
+    @staticmethod
+    def _is_prompt_cache_key_unsupported(error_text: str) -> bool:
+        low = (error_text or "").lower()
+        return (
+            "prompt_cache_key" in low
+            and any(
+                marker in low
+                for marker in (
+                    "unsupported parameter",
+                    "unknown parameter",
+                    "extra_forbidden",
+                    "extra inputs are not permitted",
+                    "not supported",
+                )
+            )
+        )
+
+    @staticmethod
+    def _parse_usage_data(usage_data: dict | None) -> Usage:
+        usage_data = usage_data or {}
+        input_details = usage_data.get("input_tokens_details", {}) or {}
+        cache_read = usage_data.get("cache_read_input_tokens", 0)
+        if not cache_read:
+            cache_read = input_details.get("cached_tokens", 0)
+
+        cache_creation = usage_data.get("cache_creation_input_tokens", 0)
+        if not cache_creation:
+            cache_creation = (
+                input_details.get("cache_creation_tokens", 0)
+                or input_details.get("cache_write_tokens", 0)
+            )
+
+        return Usage(
+            input_tokens=usage_data.get("input_tokens", 0),
+            output_tokens=usage_data.get("output_tokens", 0),
+            cache_creation_input_tokens=cache_creation,
+            cache_read_input_tokens=cache_read,
+        )
 
     def _estimate_request_timeout(self, body: dict):  # -> httpx.Timeout | None
         """Responses API 使用 input 而非 messages，需适配 token 估算。"""
@@ -117,6 +230,24 @@ class OpenAIResponsesProvider(OpenAIProvider):
                 json=body,
                 **({"timeout": req_timeout} if req_timeout else {}),
             )
+
+            if response.status_code >= 400 and body.get("prompt_cache_key"):
+                body_preview = (response.text or "")[:500]
+                if self._is_prompt_cache_key_unsupported(body_preview):
+                    self._prompt_cache_key_unsupported = True
+                    retry_body = dict(body)
+                    retry_body.pop("prompt_cache_key", None)
+                    logger.info(
+                        "[ResponsesAPI] endpoint '%s' rejected prompt_cache_key; "
+                        "auto-disabling and retrying once",
+                        self.name,
+                    )
+                    response = await client.post(
+                        self._api_url,
+                        headers=self._build_headers(),
+                        json=retry_body,
+                        **({"timeout": req_timeout} if req_timeout else {}),
+                    )
 
             if response.status_code >= 400:
                 body = (response.text or "")[:500]
@@ -236,6 +367,18 @@ class OpenAIResponsesProvider(OpenAIProvider):
             if val is not None and (not isinstance(val, int) or val <= 0):
                 body.pop(key, None)
 
+        if not body.get("prompt_cache_key") and self._should_auto_inject_prompt_cache_key():
+            prompt_cache_key = self._build_prompt_cache_key(body)
+            if prompt_cache_key:
+                body["prompt_cache_key"] = prompt_cache_key
+                logger.debug(
+                    "[ResponsesAPI] prompt cache enabled: endpoint=%s key=%s input_items=%d tools=%d",
+                    self.name,
+                    prompt_cache_key,
+                    len(body.get("input", []) or []),
+                    len(body.get("tools", []) or []),
+                )
+
         return body
 
     def _parse_response(self, data: dict) -> LLMResponse:
@@ -285,11 +428,7 @@ class OpenAIResponsesProvider(OpenAIProvider):
             stop_reason = StopReason.END_TURN
 
         # Usage
-        usage_data = data.get("usage", {})
-        usage = Usage(
-            input_tokens=usage_data.get("input_tokens", 0),
-            output_tokens=usage_data.get("output_tokens", 0),
-        )
+        usage = self._parse_usage_data(data.get("usage", {}))
 
         return LLMResponse(
             id=data.get("id", ""),
@@ -353,16 +492,20 @@ class OpenAIResponsesProvider(OpenAIProvider):
 
         # ── 正常完成 ──
         if event_type in ("response.completed", "response.done"):
+            usage_data = event.get("response", {}).get("usage") or event.get("usage")
             return {
                 "type": "message_stop",
                 "stop_reason": "stop",
+                "usage": self._parse_usage_data(usage_data).__dict__ if usage_data else None,
             }
 
         # ── 截断（max_output_tokens 达到上限）──
         if event_type == "response.incomplete":
+            usage_data = event.get("response", {}).get("usage") or event.get("usage")
             return {
                 "type": "message_stop",
                 "stop_reason": "length",
+                "usage": self._parse_usage_data(usage_data).__dict__ if usage_data else None,
             }
 
         # ── 新 output item（函数调用的首个事件，含 name 和 call_id）──
@@ -393,78 +536,97 @@ class OpenAIResponsesProvider(OpenAIProvider):
 
         try:
             import httpx
-            async with client.stream(
-                "POST",
-                self._api_url,
-                headers=self._build_headers(),
-                json=body,
-                **({"timeout": req_timeout} if req_timeout else {}),
-            ) as response:
-                if response.status_code >= 400:
-                    error_body = await response.aread()
-                    error_text = error_body.decode(errors="replace")[:500]
-                    if response.status_code == 401:
-                        raise AuthenticationError(f"Authentication failed: {error_text}")
-                    if response.status_code == 429:
-                        raise RateLimitError(f"Rate limit exceeded: {error_text}")
-                    raise LLMError(f"API error ({response.status_code}): {error_text}")
+            stream_body = dict(body)
+            retry_without_cache_key = False
+            while True:
+                async with client.stream(
+                    "POST",
+                    self._api_url,
+                    headers=self._build_headers(),
+                    json=stream_body,
+                    **({"timeout": req_timeout} if req_timeout else {}),
+                ) as response:
+                    if response.status_code >= 400:
+                        error_body = await response.aread()
+                        error_text = error_body.decode(errors="replace")[:500]
+                        if (
+                            stream_body.get("prompt_cache_key")
+                            and not retry_without_cache_key
+                            and self._is_prompt_cache_key_unsupported(error_text)
+                        ):
+                            self._prompt_cache_key_unsupported = True
+                            retry_without_cache_key = True
+                            stream_body = dict(stream_body)
+                            stream_body.pop("prompt_cache_key", None)
+                            logger.info(
+                                "[ResponsesAPI] endpoint '%s' rejected prompt_cache_key "
+                                "in stream mode; auto-disabling and retrying once",
+                                self.name,
+                            )
+                            continue
+                        if response.status_code == 401:
+                            raise AuthenticationError(f"Authentication failed: {error_text}")
+                        if response.status_code == 429:
+                            raise RateLimitError(f"Rate limit exceeded: {error_text}")
+                        raise LLMError(f"API error ({response.status_code}): {error_text}")
 
-                has_content = False
-                async for line in response.aiter_lines():
-                    if not line.strip():
-                        continue
+                    has_content = False
+                    async for line in response.aiter_lines():
+                        if not line.strip():
+                            continue
 
-                    if line.startswith("data: "):
-                        data = line[6:]
-                        if data.strip() and data != "[DONE]":
+                        if line.startswith("data: "):
+                            data = line[6:]
+                            if data.strip() and data != "[DONE]":
+                                try:
+                                    event = json.loads(data)
+                                    converted = self._convert_stream_event(event)
+                                    items = converted if isinstance(converted, list) else [converted]
+                                    for item in items:
+                                        if item.get("type") == "error":
+                                            err_msg = item.get("error", "Unknown stream error")
+                                            self.mark_unhealthy(
+                                                f"Stream error: {err_msg}",
+                                                is_local=self._is_local_endpoint(),
+                                            )
+                                            raise LLMError(
+                                                f"Stream error from '{self.name}': {err_msg}"
+                                            )
+                                        has_content = True
+                                        yield item
+                                except json.JSONDecodeError:
+                                    continue
+                        elif line.startswith("event:"):
+                            continue
+                        elif not has_content and not line.startswith(":"):
                             try:
-                                event = json.loads(data)
-                                converted = self._convert_stream_event(event)
-                                items = converted if isinstance(converted, list) else [converted]
-                                for item in items:
-                                    if item.get("type") == "error":
-                                        err_msg = item.get("error", "Unknown stream error")
-                                        self.mark_unhealthy(
-                                            f"Stream error: {err_msg}",
-                                            is_local=self._is_local_endpoint(),
-                                        )
-                                        raise LLMError(
-                                            f"Stream error from '{self.name}': {err_msg}"
-                                        )
-                                    has_content = True
-                                    yield item
+                                err_data = json.loads(line)
+                                if "error" in err_data:
+                                    err_obj = err_data["error"]
+                                    err_msg = (
+                                        err_obj.get("message", str(err_obj))
+                                        if isinstance(err_obj, dict)
+                                        else str(err_obj)
+                                    )
+                                    raise LLMError(f"Stream error from '{self.name}': {err_msg}")
                             except json.JSONDecodeError:
-                                continue
-                    elif line.startswith("event:"):
-                        continue
-                    elif not has_content and not line.startswith(":"):
-                        try:
-                            err_data = json.loads(line)
-                            if "error" in err_data:
-                                err_obj = err_data["error"]
-                                err_msg = (
-                                    err_obj.get("message", str(err_obj))
-                                    if isinstance(err_obj, dict)
-                                    else str(err_obj)
-                                )
-                                raise LLMError(f"Stream error from '{self.name}': {err_msg}")
-                        except json.JSONDecodeError:
-                            if "error" in line.lower():
-                                raise LLMError(
-                                    f"Stream error from '{self.name}': {line[:500]}"
-                                )
+                                if "error" in line.lower():
+                                    raise LLMError(
+                                        f"Stream error from '{self.name}': {line[:500]}"
+                                    )
 
-                if has_content:
-                    self.mark_healthy()
-                else:
-                    self.mark_unhealthy(
-                        f"Empty stream response (model={body.get('model', '?')})",
-                        is_local=self._is_local_endpoint(),
-                    )
-                    raise LLMError(
-                        f"Stream returned empty response from '{self.name}'. "
-                        f"Model may be unavailable or rate-limited."
-                    )
+                    if has_content:
+                        self.mark_healthy()
+                    else:
+                        self.mark_unhealthy(
+                            f"Empty stream response (model={stream_body.get('model', '?')})",
+                            is_local=self._is_local_endpoint(),
+                        )
+                        raise LLMError(
+                            f"Stream returned empty response from '{self.name}'. "
+                            f"Model may be unavailable or rate-limited."
+                        )
+                    break
 
         except Exception as e:
             import httpx

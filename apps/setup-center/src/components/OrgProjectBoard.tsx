@@ -64,6 +64,7 @@ export function OrgProjectBoard({ orgId, apiBaseUrl, nodes = [], compact = false
   const [loading, setLoading] = useState(true);
   const [showNewProject, setShowNewProject] = useState(false);
   const [showNewTask, setShowNewTask] = useState(false);
+  const [showDeleteProject, setShowDeleteProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectDesc, setNewProjectDesc] = useState("");
   const [newProjectType, setNewProjectType] = useState("temporary");
@@ -115,7 +116,11 @@ export function OrgProjectBoard({ orgId, apiBaseUrl, nodes = [], compact = false
       if (res.ok) {
         const data = await res.json();
         setProjects(data);
-        if (!selectedProjectId && data.length > 0) setSelectedProjectId(data[0].id);
+        if (data.length === 0) {
+          setSelectedProjectId(null);
+        } else if (!selectedProjectId || !data.some((p: Project) => p.id === selectedProjectId)) {
+          setSelectedProjectId(data[0].id);
+        }
       }
     } catch { /* ignore */ }
     setLoading(false);
@@ -145,6 +150,19 @@ export function OrgProjectBoard({ orgId, apiBaseUrl, nodes = [], compact = false
         body: JSON.stringify({ title: newTaskTitle, description: newTaskDesc, assignee_node_id: newTaskAssignee || null, status: "todo" }),
       });
       setNewTaskTitle(""); setNewTaskDesc(""); setNewTaskAssignee(""); setShowNewTask(false);
+      fetchProjects();
+    } catch { /* ignore */ }
+  };
+
+  const deleteProject = async (projectId: string) => {
+    try {
+      await safeFetch(`${apiBaseUrl}/api/orgs/${orgId}/projects/${projectId}`, { method: "DELETE" });
+      if (selectedProjectId === projectId) {
+        const remaining = projects.filter(p => p.id !== projectId);
+        setSelectedProjectId(remaining[0]?.id || null);
+        closeTaskDetail();
+      }
+      setShowDeleteProject(false);
       fetchProjects();
     } catch { /* ignore */ }
   };
@@ -179,7 +197,7 @@ export function OrgProjectBoard({ orgId, apiBaseUrl, nodes = [], compact = false
   const tasks = selectedProject?.tasks || [];
 
   const projectStats = useMemo(() => {
-    if (!tasks.length) return null;
+    if (!selectedProject) return null;
     const total = tasks.length;
     const done = tasks.filter(t => t.status === "accepted").length;
     const inProgress = tasks.filter(t => t.status === "in_progress").length;
@@ -188,7 +206,7 @@ export function OrgProjectBoard({ orgId, apiBaseUrl, nodes = [], compact = false
     const blocked = tasks.filter(t => t.status === "blocked" || t.status === "rejected").length;
     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
     return { total, done, inProgress, delivered, todo, blocked, pct };
-  }, [tasks]);
+  }, [selectedProject, tasks]);
 
   if (loading) {
     return (
@@ -218,11 +236,19 @@ export function OrgProjectBoard({ orgId, apiBaseUrl, nodes = [], compact = false
           transition: all 0.15s;
         }
         .opb-proj-btn--active {
-          background: var(--primary, #6366f1); color: #fff !important; font-weight: 600;
-          box-shadow: 0 1px 4px rgba(99,102,241,0.25);
+          background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+          color: #1d4ed8 !important; font-weight: 700;
+          border: 1px solid rgba(37,99,235,0.35);
+          box-shadow: 0 6px 14px rgba(37,99,235,0.16);
         }
         .opb-proj-btn--active:hover {
-          background: #4f46e5; color: #fff !important;
+          background: linear-gradient(135deg, #bfdbfe, #93c5fd);
+          color: #1e40af !important;
+        }
+        .opb-proj-btn--active .opb-type-tag {
+          background: rgba(29, 78, 216, 0.12);
+          color: #1e3a8a;
+          border: 1px solid rgba(29, 78, 216, 0.18);
         }
         .opb-proj-btn--inactive {
           background: transparent; color: var(--text, #e2e8f0);
@@ -427,6 +453,14 @@ export function OrgProjectBoard({ orgId, apiBaseUrl, nodes = [], compact = false
             <button className={`opb-view-tab${viewTab === "kanban" ? " opb-view-tab--active" : ""}`} onClick={() => setViewTab("kanban")}>
               看板
             </button>
+            <button
+              className="opb-view-tab"
+              style={{ color: "#ef4444", borderLeft: "none", borderRadius: 6, marginLeft: 8 }}
+              onClick={() => setShowDeleteProject(true)}
+              title={`删除项目 ${selectedProject.name}`}
+            >
+              删除项目
+            </button>
           </div>
         )}
       </div>
@@ -483,6 +517,7 @@ export function OrgProjectBoard({ orgId, apiBaseUrl, nodes = [], compact = false
             onDispatch={(tid) => dispatchTask(selectedProject.id, tid)}
             onDelete={(tid) => deleteTask(selectedProject.id, tid)}
             dispatchingTaskId={dispatchingTaskId}
+            onCreateTask={() => setShowNewTask(true)}
           />
         ) : (
           <KanbanView
@@ -585,6 +620,40 @@ export function OrgProjectBoard({ orgId, apiBaseUrl, nodes = [], compact = false
         document.body
       )}
 
+      {/* ── Delete Project Modal ── */}
+      {showDeleteProject && selectedProject && createPortal(
+        <div className="opb-modal-overlay" onClick={() => setShowDeleteProject(false)}>
+          <div className="opb-modal" onClick={e => e.stopPropagation()}>
+            <div className="opb-modal-header">
+              <span>删除项目</span>
+              <button className="opb-modal-close" onClick={() => setShowDeleteProject(false)}>×</button>
+            </div>
+            <div className="opb-modal-body">
+              <div style={{ fontSize: 13, lineHeight: 1.6 }}>
+                确定要删除项目 <strong>{selectedProject.name}</strong> 吗？
+              </div>
+              <div style={{ marginTop: 10, fontSize: 11, color: "var(--muted)", fontFamily: "monospace" }}>
+                project_id: {selectedProject.id}
+              </div>
+              <div style={{ marginTop: 8, fontSize: 11, color: "#ef4444" }}>
+                项目下的任务也会一起删除。
+              </div>
+            </div>
+            <div className="opb-modal-footer">
+              <button className="opb-modal-btn" onClick={() => setShowDeleteProject(false)}>取消</button>
+              <button
+                className="opb-modal-btn"
+                style={{ background: "#ef4444", color: "#fff", borderColor: "#ef4444" }}
+                onClick={() => deleteProject(selectedProject.id)}
+              >
+                删除
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* ── Task Detail Panel ── */}
       {selectedTask && (
         <div className="opb-detail-overlay" onClick={closeTaskDetail}>
@@ -617,7 +686,7 @@ export function OrgProjectBoard({ orgId, apiBaseUrl, nodes = [], compact = false
 /* ═══════════════════ Gantt View ═══════════════════ */
 
 function GanttView({
-  tasks, nodeMap, onTaskClick, onStatusChange, onDispatch, onDelete, dispatchingTaskId,
+  tasks, nodeMap, onTaskClick, onStatusChange, onDispatch, onDelete, dispatchingTaskId, onCreateTask,
 }: {
   tasks: ProjectTask[];
   nodeMap: Map<string, { id: string; role_title?: string; avatar?: string | null }>;
@@ -626,6 +695,7 @@ function GanttView({
   onDispatch: (tid: string) => void;
   onDelete: (tid: string) => void;
   dispatchingTaskId: string | null;
+  onCreateTask: () => void;
 }) {
   const sorted = useMemo(() =>
     [...tasks].sort((a, b) => {
@@ -684,7 +754,16 @@ function GanttView({
   return (
     <div className="opb-gantt">
       {sorted.length === 0 ? (
-        <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>暂无任务，点击「+ 新任务」开始</div>
+        <div style={{ padding: 40, textAlign: "center", color: "var(--muted)", display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
+          <div>暂无任务，点击「+ 新任务」开始</div>
+          <button
+            className="opb-action-btn"
+            style={{ background: "var(--primary, #6366f1)", color: "#fff", padding: "8px 20px", fontSize: 13, borderRadius: 8 }}
+            onClick={onCreateTask}
+          >
+            + 新任务
+          </button>
+        </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column" }}>
           {/* Time axis header */}

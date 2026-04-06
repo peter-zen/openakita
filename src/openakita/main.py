@@ -1968,7 +1968,7 @@ def serve(
         api_task = None
         _api_fatal = False
         try:
-            from openakita.api.server import start_api_server
+            from openakita.api.server import API_HOST, API_PORT, start_api_server
             api_task = await start_api_server(
                 agent=agent_or_master,
                 shutdown_event=shutdown_event,
@@ -1977,7 +1977,9 @@ def serve(
                 orchestrator=_orchestrator,
                 agent_pool=_desktop_pool,
             )
-            console.print("[green]✓[/green] HTTP API 已启动: http://127.0.0.1:18900")
+            _api_host = os.environ.get("API_HOST", API_HOST)
+            _api_port = int(os.environ.get("API_PORT", API_PORT))
+            console.print(f"[green]✓[/green] HTTP API 已启动: http://{_api_host}:{_api_port}")
             _heartbeat_phase = "running"
             _heartbeat_http_ready = True
             _write_heartbeat()  # 立即刷新心跳，标记 HTTP 就绪

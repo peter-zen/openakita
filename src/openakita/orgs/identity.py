@@ -243,11 +243,24 @@ class OrgIdentity:
                 + delivery_flow
             )
 
+        project_task_section_title = "当前分配给你的项目任务"
         if getattr(org, "operation_mode", "") == "command" and not project_tasks_summary:
-            project_tasks_summary = self._get_project_tasks_summary(org, node)
+            if node.level == 0:
+                project_tasks_summary = self._get_root_project_tasks_summary(org)
+                project_task_section_title = "当前项目任务总览"
+            else:
+                project_tasks_summary = self._get_project_tasks_summary(org, node)
+
+        project_overview_summary = self._get_projects_overview_summary(org)
+        if project_overview_summary:
+            parts.append(
+                "## 当前项目概览\n"
+                f"{project_overview_summary}\n"
+                "如需查看或创建项目任务，优先使用上面的 project_id。"
+            )
 
         if project_tasks_summary:
-            parts.append(f"## 当前分配给你的项目任务\n{project_tasks_summary}")
+            parts.append(f"## {project_task_section_title}\n{project_tasks_summary}")
 
         if blackboard_summary:
             parts.append(f"## 当前组织简报\n{blackboard_summary}")
@@ -368,6 +381,104 @@ class OrgIdentity:
                 proj = t.get("project_name", "")
                 lines.append(f"- [{status}] {title} ({proj}) {pct}%")
             return "\n".join(lines) if lines else "(暂无)"
+        except Exception:
+            return ""
+
+    def _get_projects_overview_summary(self, org: Organization) -> str:
+        """Get a compact summary of current projects, including empty ones."""
+        if getattr(org, "operation_mode", "") != "command":
+            return ""
+        try:
+            from openakita.orgs.project_store import ProjectStore
+
+            store = ProjectStore(self._org_dir)
+            projects = store.list_projects()
+            if not projects:
+                return "(当前没有项目)"
+
+            status_order = {
+                "active": 0,
+                "planning": 1,
+                "paused": 2,
+                "completed": 3,
+                "archived": 4,
+            }
+
+            lines: list[str] = []
+            for proj in sorted(
+                projects,
+                key=lambda p: (
+                    status_order.get(getattr(getattr(p, "status", None), "value", ""), 9),
+                    p.created_at,
+                ),
+            )[:8]:
+                tasks = list(getattr(proj, "tasks", []) or [])
+                total = len(tasks)
+                todo = sum(1 for t in tasks if getattr(getattr(t, "status", None), "value", "") == "todo")
+                doing = sum(
+                    1 for t in tasks if getattr(getattr(t, "status", None), "value", "") == "in_progress"
+                )
+                done = sum(
+                    1 for t in tasks if getattr(getattr(t, "status", None), "value", "") == "accepted"
+                )
+                owner_label = "未指定"
+                owner_node_id = getattr(proj, "owner_node_id", None)
+                if owner_node_id:
+                    owner = org.get_node(owner_node_id)
+                    owner_label = owner.role_title if owner else owner_node_id
+                lines.append(
+                    "- "
+                    f"{proj.name} "
+                    f"(project_id: {proj.id}, status: {proj.status.value}, "
+                    f"type: {proj.project_type.value}, owner: {owner_label}, "
+                    f"tasks: {total}, todo: {todo}, doing: {doing}, done: {done})"
+                )
+            return "\n".join(lines) if lines else "(当前没有项目)"
+        except Exception:
+            return ""
+
+    def _get_root_project_tasks_summary(self, org: Organization) -> str:
+        """Get a compact cross-project task summary for the root coordinator."""
+        if getattr(org, "operation_mode", "") != "command":
+            return ""
+        try:
+            from openakita.orgs.project_store import ProjectStore
+
+            store = ProjectStore(self._org_dir)
+            tasks = store.all_tasks(status=None)
+            active_statuses = {"todo", "in_progress", "delivered", "rejected", "blocked"}
+            tasks = [t for t in tasks if t.get("status", "") in active_statuses]
+            if not tasks:
+                return "(当前项目中暂无任务)"
+
+            status_order = {
+                "in_progress": 0,
+                "todo": 1,
+                "delivered": 2,
+                "blocked": 3,
+                "rejected": 4,
+            }
+
+            lines: list[str] = []
+            for t in sorted(
+                tasks,
+                key=lambda x: (
+                    status_order.get(x.get("status", ""), 9),
+                    x.get("project_name", ""),
+                    x.get("created_at", ""),
+                ),
+            )[:10]:
+                title = t.get("title", "")[:60]
+                status = t.get("status", "")
+                pct = t.get("progress_pct", 0)
+                proj = t.get("project_name", "")
+                assignee_id = t.get("assignee_node_id")
+                assignee = org.get_node(assignee_id) if assignee_id else None
+                assignee_label = assignee.role_title if assignee else (assignee_id or "未分配")
+                lines.append(
+                    f"- [{status}] {title} ({proj} -> {assignee_label}) {pct}%"
+                )
+            return "\n".join(lines) if lines else "(当前项目中暂无任务)"
         except Exception:
             return ""
 

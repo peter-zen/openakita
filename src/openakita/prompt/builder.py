@@ -365,19 +365,22 @@ def build_system_prompt(
     if mode_rules:
         system_parts.append(mode_rules)
 
-    # 6. Runtime 层（所有 prompt_mode 都注入）
-    runtime_section = _build_runtime_section()
-    system_parts.append(runtime_section)
+    runtime_parts: list[str] = []
 
-    # 6.5 会话元数据（session_context 和 model_display_name）
+    # 6. Runtime 层（后置，避免打散稳定缓存前缀）
+    runtime_section = _build_runtime_section()
+    if runtime_section:
+        runtime_parts.append(runtime_section)
+
+    # 6.5 会话元数据（后置，session_id/message_count 每轮变化）
     session_meta = _build_session_metadata_section(
         session_context=session_context,
         model_display_name=model_display_name,
     )
     if session_meta:
-        system_parts.append(session_meta)
+        runtime_parts.append(session_meta)
 
-    # 6.6 架构概况（powered by {model}，区分主/子 Agent）
+    # 6.6 架构概况（后置，模型名可能随 failover 变化）
     from ..config import settings as _arch_settings
     arch_section = _build_arch_section(
         model_display_name=model_display_name,
@@ -385,7 +388,7 @@ def build_system_prompt(
         multi_agent_enabled=_arch_settings.multi_agent_enabled,
     )
     if arch_section:
-        system_parts.append(arch_section)
+        runtime_parts.append(arch_section)
 
     # 7. 会话类型规则
     if prompt_mode in (PromptMode.FULL, PromptMode.MINIMAL):
@@ -453,10 +456,12 @@ def build_system_prompt(
         sections.append("## System\n\n" + "\n\n".join(system_parts))
     if developer_parts:
         sections.append("## Developer\n\n" + "\n\n".join(developer_parts))
-    if user_parts:
-        sections.append("## User\n\n" + "\n\n".join(user_parts))
     if tool_parts:
         sections.append("## Tool\n\n" + "\n\n".join(tool_parts))
+    if user_parts:
+        sections.append("## User\n\n" + "\n\n".join(user_parts))
+    if runtime_parts:
+        sections.append("## Runtime\n\n" + "\n\n".join(runtime_parts))
 
     system_prompt = "\n\n---\n\n".join(sections)
 

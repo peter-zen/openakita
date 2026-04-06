@@ -7,7 +7,14 @@ from pathlib import Path
 import pytest
 
 from openakita.orgs.identity import OrgIdentity, ResolvedIdentity
-from openakita.orgs.models import Organization, OrgNode
+from openakita.orgs.models import (
+    Organization,
+    OrgNode,
+    OrgProject,
+    ProjectStatus,
+    ProjectTask,
+    TaskStatus,
+)
 from .conftest import make_org, make_node, make_edge
 
 
@@ -85,6 +92,60 @@ class TestBuildOrgContextPrompt:
             policy_index="- 沟通规范.md\n- 任务管理.md",
         )
         assert "沟通规范" in prompt
+
+    def test_includes_project_overview_even_when_project_has_no_tasks(
+        self, identity: OrgIdentity, persisted_org, org_dir: Path
+    ):
+        from openakita.orgs.project_store import ProjectStore
+
+        store = ProjectStore(org_dir)
+        store.create_project(
+            OrgProject(
+                org_id=persisted_org.id,
+                name="陪伴机器人",
+                status=ProjectStatus.ACTIVE,
+            )
+        )
+
+        node = persisted_org.nodes[0]
+        resolved = identity.resolve(node, persisted_org)
+        prompt = identity.build_org_context_prompt(node, persisted_org, resolved)
+
+        assert "当前项目概览" in prompt
+        assert "陪伴机器人" in prompt
+        assert "project_id:" in prompt
+        assert "tasks: 0" in prompt
+
+    def test_root_prompt_includes_tasks_assigned_to_other_nodes(
+        self, identity: OrgIdentity, persisted_org, org_dir: Path
+    ):
+        from openakita.orgs.project_store import ProjectStore
+
+        store = ProjectStore(org_dir)
+        project = store.create_project(
+            OrgProject(
+                org_id=persisted_org.id,
+                name="陪伴机器人",
+                status=ProjectStatus.ACTIVE,
+            )
+        )
+        store.add_task(
+            project.id,
+            ProjectTask(
+                project_id=project.id,
+                title="调研机器人自主移动技术方案",
+                status=TaskStatus.TODO,
+                assignee_node_id=persisted_org.nodes[1].id,
+            ),
+        )
+
+        root = persisted_org.nodes[0]
+        resolved = identity.resolve(root, persisted_org)
+        prompt = identity.build_org_context_prompt(root, persisted_org, resolved)
+
+        assert "当前项目任务总览" in prompt
+        assert "调研机器人自主移动技术方案" in prompt
+        assert persisted_org.nodes[1].role_title in prompt
 
 
 class TestCoreBusiness:

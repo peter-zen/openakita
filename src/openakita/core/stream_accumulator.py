@@ -65,6 +65,9 @@ class StreamAccumulator:
         if evt_type == "message_delta":
             return self._on_anthropic_message_delta(event)
         if evt_type == "message_stop":
+            u = event.get("usage")
+            if u:
+                self.usage = u
             raw_reason = event.get("stop_reason", "")
             _reason_map = {
                 "stop": "end_turn", "length": "max_tokens",

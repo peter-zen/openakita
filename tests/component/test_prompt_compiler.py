@@ -89,3 +89,33 @@ class TestBuildSystemPrompt:
             budget_config=budget,
         )
         assert isinstance(prompt, str)
+
+    def test_runtime_section_is_after_tool_section(self, tmp_path):
+        from openakita.prompt.builder import build_system_prompt
+        from openakita.tools.catalog import ToolCatalog
+
+        identity_dir = tmp_path / "identity"
+        identity_dir.mkdir()
+        (identity_dir / "SOUL.md").write_text("# Soul\nTest.", encoding="utf-8")
+
+        catalog = ToolCatalog([
+            {
+                "name": "read_file",
+                "description": "Read file",
+                "short_description": "Read file",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {"path": {"type": "string"}},
+                },
+            }
+        ])
+
+        prompt = build_system_prompt(
+            identity_dir=identity_dir,
+            tools_enabled=True,
+            tool_catalog=catalog,
+        )
+
+        assert "## Tool" in prompt
+        assert "## Runtime" in prompt
+        assert prompt.index("## Tool") < prompt.index("## Runtime")

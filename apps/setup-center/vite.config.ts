@@ -7,6 +7,8 @@ const buildTarget = process.env.VITE_BUILD_TARGET || "tauri";
 const isWebBuild = buildTarget === "web";
 const isCapBuild = buildTarget === "capacitor";
 const isRemoteBuild = isWebBuild || isCapBuild;
+const apiProxyTarget = process.env.VITE_API_PROXY_TARGET || "http://127.0.0.1:18900";
+const wsProxyTarget = apiProxyTarget.replace(/^http/, "ws");
 
 function tauriStubPlugin(): Plugin {
   const prefix = "@tauri-apps/";
@@ -62,11 +64,11 @@ export default defineConfig({
       ? {
           proxy: {
             "/api": {
-              target: "http://127.0.0.1:18900",
+              target: apiProxyTarget,
               changeOrigin: true,
             },
             "/ws": {
-              target: "ws://127.0.0.1:18900",
+              target: wsProxyTarget,
               ws: true,
             },
           },
@@ -75,4 +77,3 @@ export default defineConfig({
   },
   clearScreen: false,
 });
-
